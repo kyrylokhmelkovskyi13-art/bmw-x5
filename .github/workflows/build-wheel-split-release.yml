@@ -72,6 +72,9 @@ jobs:
           test -s build/export/wheels/wheel_b_side_a.x
           test -s build/export/wheels/wheel_b_side_b.x
 
+      - name: Compile-check material generator
+        run: python3 -m py_compile tools/generate_mudrunner_material_xml.py
+
       - name: Generate GLB-based material XML and diffuse TGA textures
         run: |
           set -euxo pipefail
