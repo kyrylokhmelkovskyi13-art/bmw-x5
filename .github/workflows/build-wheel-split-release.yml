@@ -42,7 +42,10 @@ jobs:
           test -s build/split/wheel_b_side_a.obj
           test -s build/split/wheel_b_side_b.obj
           test -s build/split/SPLIT_REPORT.txt
-          echo "All split OBJ files and report are present."
+          test -s build/split/MATERIAL_TEXTURE_INVENTORY.txt
+          test -d build/split/textures
+          find build/split/textures -maxdepth 1 -type f -name "*.png" -size +0c | grep -q .
+          echo "All split OBJ files, extracted textures, and reports are present."
 
       - name: Download Blender 2.78c and MudRunner exporter
         run: |
@@ -72,10 +75,15 @@ jobs:
       - name: Assemble release archive
         run: |
           set -euxo pipefail
-          mkdir -p build/release/wheels
+          mkdir -p build/release/meshes/trucks build/release/meshes/wheels build/release/textures
           cp build/split/SPLIT_REPORT.txt build/release/
-          cp build/export/bmw_x5.x build/release/
-          cp build/export/wheels/*.x build/release/wheels/
+          cp build/split/MATERIAL_TEXTURE_INVENTORY.txt build/release/
+          cp -a build/split/textures/. build/release/textures/
+          cp build/export/bmw_x5.x build/release/meshes/trucks/bmw_x5.x
+          cp build/export/wheels/wheel_a_side_a.x build/release/meshes/wheels/bmw_x5_end_a_side_a.x
+          cp build/export/wheels/wheel_a_side_b.x build/release/meshes/wheels/bmw_x5_end_a_side_b.x
+          cp build/export/wheels/wheel_b_side_a.x build/release/meshes/wheels/bmw_x5_end_b_side_a.x
+          cp build/export/wheels/wheel_b_side_b.x build/release/meshes/wheels/bmw_x5_end_b_side_b.x
           cd build/release
           zip -qr ../../BMW_X5_MudRunner_Wheel_Split.zip .
           test -s ../../BMW_X5_MudRunner_Wheel_Split.zip
@@ -94,7 +102,7 @@ jobs:
           name: BMW X5 MudRunner wheel split build ${{ github.run_number }}
           body: |
             Experimental geometry export for MudRunner Editor.
-            Includes chassis without Object_97 and tire meshes, plus four separate wheel .X files.
+            Includes clean chassis .X without Objects 97-101, four separate wheel .X files, extracted GLB PNG textures, and a material/texture inventory. Material XML mapping still requires MudRunner Editor slot verification.
             Inspect and test in MudRunner Editor before using in-game.
           files: BMW_X5_MudRunner_Wheel_Split.zip
           fail_on_unmatched_files: true
