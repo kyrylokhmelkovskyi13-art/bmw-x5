@@ -1,0 +1,41 @@
+name: Test MudRunner X export
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download geometry artifact from latest successful preparation
+        uses: actions/download-artifact@v4
+        with:
+          name: bmw-x5-geometry-preparation
+          path: build/blender
+      - name: Download legacy Blender and MudRunner exporter
+        run: |
+          set -eux
+          mkdir -p tools/legacy
+          curl -L --fail -o /tmp/blender278.tar.bz2 https://download.blender.org/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
+          tar -xjf /tmp/blender278.tar.bz2 -C /tmp
+          curl -L --fail -o /tmp/io_scene_mudrunner.zip https://github.com/fred-rum/io_scene_mudrunner/archive/refs/heads/master.zip
+          unzip -q /tmp/io_scene_mudrunner.zip -d /tmp
+          mv /tmp/io_scene_mudrunner-master /tmp/io_scene_mudrunner
+      - name: Attempt OBJ to MudRunner X export
+        run: |
+          set -o pipefail
+          /tmp/blender-2.78c-linux-glibc219-x86_64/blender --background --python tools/export_mudrunner_x.py -- --obj build/blender/bmw_x5_interchange.obj --addon-dir /tmp/io_scene_mudrunner --out build/export/bmw_x5_static_test.x 2>&1 | tee build/export-test.log
+      - name: Upload experimental export and log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bmw-x5-mudrunner-x-export-test
+          path: |
+            build/export/bmw_x5_static_test.x
+            build/export-test.log
+          if-no-files-found: warn
+          retention-days: 14
