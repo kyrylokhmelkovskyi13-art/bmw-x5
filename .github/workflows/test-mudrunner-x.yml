@@ -1,6 +1,10 @@
 name: Test MudRunner X export
 
 on:
+  push:
+    paths:
+      - "tools/export_mudrunner_x.py"
+      - ".github/workflows/test-mudrunner-x.yml"
   workflow_dispatch:
 
 permissions:
