@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate MudRunner CombineXMesh material XML and TGA textures from the source GLB."""
+"""Generate MudRunner CombineXMesh material XML and TGA textures from the source GLB."""\n# Executed by the release workflow after all five DirectX .X files are exported.
 import json
 import re
 import struct
