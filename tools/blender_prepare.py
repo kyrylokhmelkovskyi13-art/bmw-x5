@@ -40,8 +40,25 @@ for obj in sorted(bpy.context.scene.objects, key=lambda x: x.name):
         "rotation_euler": list(obj.matrix_world.to_euler()),
     })
 
+wheel_candidates = []
+for row in rows:
+    dims = sorted(row["dimensions"])
+    has_rubber = any("rubber" in (name or "").lower() for name in row["materials"])
+    round_wheel_shape = dims[2] > 0 and 0.92 <= dims[1] / dims[2] <= 1.08 and dims[0] <= dims[2] * 0.60
+    if has_rubber and round_wheel_shape:
+        row["wheel_candidate"] = True
+        wheel_candidates.append({
+            "name": row["name"],
+            "center": row["center"],
+            "dimensions": row["dimensions"],
+            "estimated_radius": (dims[1] + dims[2]) / 4,
+            "estimated_width": dims[0],
+            "axle_axis_candidate": "X (smallest bounding dimension)",
+        })
+
 report = {
     "source": source.name,
+    "wheel_candidates": wheel_candidates,
     "units": "Blender scene units; source GLB unit scale retained",
     "object_count": len(rows),
     "objects": rows,
@@ -62,6 +79,20 @@ if hasattr(bpy.ops.wm, "obj_export"):
         export_selected_objects=True,
         export_materials=True,
     )
+    bpy.ops.object.select_all(action="DESELECT")
+    wheel_names = {item["name"] for item in wheel_candidates}
+    for obj in bpy.context.scene.objects:
+        if obj.type == "MESH" and obj.name in wheel_names:
+            obj.select_set(True)
+    bpy.context.view_layer.objects.active = next(
+        (o for o in bpy.context.scene.objects if o.type == "MESH" and o.name in wheel_names), None
+    )
+    if wheel_names:
+        bpy.ops.wm.obj_export(
+            filepath=str((out / "wheel_candidates.obj").resolve()),
+            export_selected_objects=True,
+            export_materials=True,
+        )
 else:
     raise RuntimeError("This Blender build has no Wavefront OBJ exporter")
 
