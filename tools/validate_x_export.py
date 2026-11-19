@@ -36,7 +36,7 @@ report = {
     "material_count": materials,
     "mesh_normals_blocks": mesh_normals,
     "uv_blocks": mesh_uv,
-    "frame_names": re.findall(r"\bFrame\s+([^\\s{]+)\s*\{", text),
+    "frame_names": [name.strip() for name in re.findall(r"\bFrame\s+([^\s{]+)\s*\{", text)],
     "wheel_candidate_frames": [
         name for name in ("Object_98", "Object_99", "Object_100", "Object_101")
         if re.search(r"\bFrame\s+" + re.escape(name) + r"\s*\{", text)
