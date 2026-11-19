@@ -2,6 +2,9 @@ name: Build BMW X5 split wheels and MudRunner assets
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
