@@ -23,8 +23,8 @@ if b"txt" not in data[:16]:
 
 text = data.decode("utf-8", errors="replace")
 frames = len(re.findall(r"\bFrame\s+[A-Za-z_][A-Za-z0-9_]*\s*\{", text))
-meshes = len(re.findall(r"\bMesh\s+[A-Za-z_][A-Za-z0-9_]*\s*\{", text))
-materials = len(re.findall(r"\bMaterial\s+[A-Za-z_][A-Za-z0-9_]*\s*\{", text))
+meshes = len(re.findall(r"\bMesh(?:\s+[A-Za-z_][A-Za-z0-9_]*)?\s*\{", text))
+materials = len(re.findall(r"\bMaterial(?:\s+[A-Za-z_][A-Za-z0-9_]*)?\s*\{", text))
 mesh_normals = len(re.findall(r"\bMeshNormals\s*\{", text))
 mesh_uv = len(re.findall(r"\bMeshTextureCoords\s*\{", text))
 report = {
