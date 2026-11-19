@@ -27,18 +27,18 @@ meshes = len(re.findall(r"\bMesh(?:\s+[A-Za-z_][A-Za-z0-9_]*)?\s*\{", text))
 materials = len(re.findall(r"\bMaterial(?:\s+[A-Za-z_][A-Za-z0-9_]*)?\s*\{", text))
 mesh_normals = len(re.findall(r"\bMeshNormals\s*\{", text))
 mesh_uv = len(re.findall(r"\bMeshTextureCoords\s*\{", text))
-# Recover frame ancestry from the nested DirectX text blocks. This checks
-# hierarchy, not whether the game accepts the resulting coordinate system.
+
+# Recover frame ancestry from nested DirectX text blocks.
 frame_parent = {}
 frame_stack = []
 brace_depth = 0
-for token in re.finditer(r"\\bFrame\\s+([^\\s{]+)\\s*\\{|[{}]", text):
+for token in re.finditer(r"\bFrame\s+([^\s{]+)\s*\{|[{}]", text):
     value = token.group(0)
     if value.startswith("Frame"):
         name = token.group(1)
         parent = frame_stack[-1][0] if frame_stack else None
         frame_parent[name] = parent
-        brace_depth += 1  # opening brace included in the Frame token
+        brace_depth += 1
         frame_stack.append((name, brace_depth))
     elif value == "{":
         brace_depth += 1
@@ -54,8 +54,11 @@ expected_wheel_parents = {
     "Object_100": "wheel_pivot_end_b_side_b",
 }
 wheel_parent_checks = {
-    child: {"expected_parent": parent, "actual_parent": frame_parent.get(child),
-            "ok": frame_parent.get(child) == parent}
+    child: {
+        "expected_parent": parent,
+        "actual_parent": frame_parent.get(child),
+        "ok": frame_parent.get(child) == parent,
+    }
     for child, parent in expected_wheel_parents.items()
 }
 report = {
@@ -67,7 +70,7 @@ report = {
     "material_count": materials,
     "mesh_normals_blocks": mesh_normals,
     "uv_blocks": mesh_uv,
-    "frame_names": [name.strip() for name in re.findall(r"\bFrame\s+([^\s{]+)\s*\{", text)],
+    "frame_names": re.findall(r"\bFrame\s+([^\s{]+)\s*\{", text),
     "wheel_candidate_frames": [
         name for name in ("Object_98", "Object_99", "Object_100", "Object_101")
         if re.search(r"\bFrame\s+" + re.escape(name) + r"\s*\{", text)
@@ -81,14 +84,19 @@ report = {
         )
         if re.search(r"\bFrame\s+" + re.escape(name) + r"\s*\{", text)
     ],
-    "wheel_parent_checks": wheel_parent_checks,\n    "wheel_candidate_note": "Source mesh names are geometry-based candidates. Pivot frame names are experimental and must be inspected in MudRunner Editor.",
-    "warning": "Structural text check only; does not prove MudRunner Editor or in-game compatibility."
+    "wheel_parent_checks": wheel_parent_checks,
+    "wheel_candidate_note": "Source mesh names are geometry-based candidates. Pivot frame names are experimental and must be inspected in MudRunner Editor.",
+    "warning": "Structural text check only; does not prove MudRunner Editor or in-game compatibility.",
 }
 out = Path(a.report)
 out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(json.dumps(report, indent=2), encoding="utf-8")
 print(json.dumps(report, indent=2))
+
 if meshes == 0:
     raise SystemExit("FAIL: no Mesh blocks found")
 if len(report["wheel_pivot_frames"]) != 4:
     raise SystemExit("FAIL: expected four exported wheel pivot frames; found %d" % len(report["wheel_pivot_frames"]))
+failed = [child for child, check in wheel_parent_checks.items() if not check["ok"]]
+if failed:
+    raise SystemExit("FAIL: wheel mesh parent frame mismatch: " + ", ".join(failed))
