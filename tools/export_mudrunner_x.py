@@ -43,8 +43,35 @@ objects = [o for o in bpy.context.scene.objects if o.type == "MESH"]
 if not objects:
     raise RuntimeError("OBJ import produced no mesh objects")
 
-# Static geometry test only: truck physics frames, collision and vehicle XML
-# must be authored separately before this can be a playable MudRunner truck.
+# Experimental wheel pivot hierarchy: the four geometry-based rubber wheel
+# candidates are parented to empty frames placed at their measured world-space
+# centers. Parent inverse preserves the visible wheel geometry in place.
+# Front/rear and MudRunner axis assignments are intentionally not inferred.
+wheel_layout = {
+    "Object_98": "wheel_pivot_end_a_side_a",
+    "Object_99": "wheel_pivot_end_b_side_a",
+    "Object_100": "wheel_pivot_end_b_side_b",
+    "Object_101": "wheel_pivot_end_a_side_b",
+}
+missing = sorted(set(wheel_layout) - {o.name for o in objects})
+if missing:
+    raise RuntimeError("Missing expected wheel candidate objects: " + ", ".join(missing))
+
+for mesh_name, frame_name in wheel_layout.items():
+    wheel = bpy.data.objects[mesh_name]
+    world_corners = [wheel.matrix_world * Vector(corner) for corner in wheel.bound_box]
+    center = sum(world_corners, Vector()) / 8.0
+    pivot = bpy.data.objects.new(frame_name, None)
+    bpy.context.scene.objects.link(pivot)
+    pivot.location = center
+    pivot.rotation_euler = (0.0, 0.0, 0.0)
+    pivot.scale = (1.0, 1.0, 1.0)
+    wheel.parent = pivot
+    wheel.matrix_parent_inverse = pivot.matrix_world.inverted()
+
+# This remains a hierarchy/export experiment only: collision frames, chassis
+# bodies, suspension constraints, steering rack, and vehicle XML are not yet
+# authored. The four empty frames must be confirmed in MudRunner Editor.
 result = bpy.ops.export_scene.mudrunner(
     filepath=out_path,
     SelectedOnly=False,
