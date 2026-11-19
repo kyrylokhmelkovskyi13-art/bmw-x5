@@ -56,9 +56,23 @@ for row in rows:
             "axle_axis_candidate": "X (smallest bounding dimension)",
         })
 
+# Broad cabin-zone shortlist for manual visual inspection. This does not identify
+# a steering wheel automatically; it only isolates meshes in the likely cabin volume.
+interior_candidates = []
+for row in rows:
+    x, y, z = row["center"]
+    dx, dy, dz = row["dimensions"]
+    if abs(x) <= 0.95 and -1.35 <= y <= 1.35 and 0.05 <= z <= 0.85 and max(dx, dy, dz) <= 1.25:
+        interior_candidates.append({
+            "name": row["name"], "center": row["center"],
+            "dimensions": row["dimensions"], "materials": row["materials"],
+            "vertices": row["vertices"], "polygons": row["polygons"],
+        })
+
 report = {
     "source": source.name,
     "wheel_candidates": wheel_candidates,
+    "interior_zone_candidates": interior_candidates,
     "units": "Blender scene units; source GLB unit scale retained",
     "object_count": len(rows),
     "objects": rows,
@@ -90,6 +104,20 @@ if hasattr(bpy.ops.wm, "obj_export"):
     if wheel_names:
         bpy.ops.wm.obj_export(
             filepath=str((out / "wheel_candidates.obj").resolve()),
+            export_selected_objects=True,
+            export_materials=True,
+        )
+    bpy.ops.object.select_all(action="DESELECT")
+    interior_names = {item["name"] for item in interior_candidates}
+    for obj in bpy.context.scene.objects:
+        if obj.type == "MESH" and obj.name in interior_names:
+            obj.select_set(True)
+    bpy.context.view_layer.objects.active = next(
+        (o for o in bpy.context.scene.objects if o.type == "MESH" and o.name in interior_names), None
+    )
+    if interior_names:
+        bpy.ops.wm.obj_export(
+            filepath=str((out / "interior_zone_candidates.obj").resolve()),
             export_selected_objects=True,
             export_materials=True,
         )
