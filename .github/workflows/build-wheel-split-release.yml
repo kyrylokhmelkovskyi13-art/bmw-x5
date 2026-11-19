@@ -72,6 +72,18 @@ jobs:
           test -s build/export/wheels/wheel_b_side_a.x
           test -s build/export/wheels/wheel_b_side_b.x
 
+      - name: Generate GLB-based material XML and diffuse TGA textures
+        run: |
+          set -euxo pipefail
+          mkdir -p build/release/textures
+          python3 tools/generate_mudrunner_material_xml.py
+          test -s meshes/trucks/bmw_x5.xml
+          test -s meshes/wheels/bmw_x5_end_a_side_a.xml
+          test -s meshes/wheels/bmw_x5_end_a_side_b.xml
+          test -s meshes/wheels/bmw_x5_end_b_side_a.xml
+          test -s meshes/wheels/bmw_x5_end_b_side_b.xml
+          echo "All body and wheel material XML files generated from GLB."
+
       - name: Assemble release archive
         run: |
           set -euxo pipefail
