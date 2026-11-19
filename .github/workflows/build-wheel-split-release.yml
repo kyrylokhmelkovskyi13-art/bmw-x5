@@ -15,7 +15,7 @@ jobs:
       - name: Install only Blender runtime libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libglu1-mesa libgl1
+          sudo apt-get install -y libglu1-mesa libgl1 python3-pil
 
       - name: Download portable Blender 4.2 LTS
         run: |
@@ -75,11 +75,15 @@ jobs:
       - name: Assemble release archive
         run: |
           set -euxo pipefail
-          mkdir -p build/release/meshes/trucks build/release/meshes/wheels build/release/textures
+          mkdir -p build/release/meshes/trucks build/release/meshes/wheels build/release/classes/trucks build/release/textures
           cp build/split/SPLIT_REPORT.txt build/release/
           cp build/split/MATERIAL_TEXTURE_INVENTORY.txt build/release/
           cp -a build/split/textures/. build/release/textures/
+          python3 -c 'from pathlib import Path; from PIL import Image; root=Path("build/release/textures"); [(lambda im,src: im.resize((1 << (im.width-1).bit_length(), 1 << (im.height-1).bit_length()), Image.Resampling.LANCZOS).save(src.with_suffix(".tga"), format="TGA"))(Image.open(src).convert("RGBA"),src) for src in root.glob("*.png")]; print("TGA_TEXTURES", len(list(root.glob("*.tga"))))'
           cp build/export/bmw_x5.x build/release/meshes/trucks/bmw_x5.x
+          cp meshes/trucks/bmw_x5.xml build/release/meshes/trucks/bmw_x5.xml
+          cp meshes/wheels/*.xml build/release/meshes/wheels/
+          cp classes/trucks/bmw_x5.xml build/release/classes/trucks/bmw_x5.xml
           cp build/export/wheels/wheel_a_side_a.x build/release/meshes/wheels/bmw_x5_end_a_side_a.x
           cp build/export/wheels/wheel_a_side_b.x build/release/meshes/wheels/bmw_x5_end_a_side_b.x
           cp build/export/wheels/wheel_b_side_a.x build/release/meshes/wheels/bmw_x5_end_b_side_a.x
