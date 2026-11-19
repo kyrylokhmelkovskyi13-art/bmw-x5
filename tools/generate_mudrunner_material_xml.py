@@ -59,7 +59,7 @@ def main():
         im = Image.open(io.BytesIO(payload)).convert('RGBA')
         target = TEXTURES / ("gltf_embedded_%d.tga" % i)
         im.save(target, format='TGA')
-        image_paths[i] = "textures/" + target.name
+        image_paths[i] = target.name
 
     materials = {}
     for material in doc.get("materials", []):
@@ -100,15 +100,20 @@ def main():
                 safe_name = re.sub(r"_{2,}", "_", safe_name)
                 target = TEXTURES / ("solid_" + safe_name + ".tga")
                 Image.new('RGBA', (16, 16), color).save(target, format='TGA')
-                diffuse = "textures/" + target.name
+                diffuse = target.name
             if "__" in Path(diffuse).name:
                 raise RuntimeError("Invalid MudRunner texture filename contains '__': " + diffuse)
             escaped_name = name.replace("&", "&amp;").replace(chr(34), "&quot;")
             rows.append('  <Material Name="%s" DiffuseMap="%s" />' % (escaped_name, diffuse))
+        if len(names) != len(set(names)):
+            raise RuntimeError("Duplicate material names found in " + str(x_path))
         rows.append('</CombineXMesh>')
         xml_path.parent.mkdir(parents=True, exist_ok=True)
         xml_path.write_text('\n'.join(rows) + '\n', encoding='utf-8')
-        print("GENERATED", xml_path, "materials=", len(names))
+        generated_names = re.findall(r'<Material\\s+Name="([^"]+)"', xml_path.read_text(encoding='utf-8'))
+        if len(generated_names) != len(set(generated_names)):
+            raise RuntimeError("Duplicate <Material> entries generated in " + str(xml_path))
+        print("GENERATED", xml_path, "materials=", len(generated_names))
 
     make_xml(BODY_X, BODY_XML)
     for xml, xfile in WHEEL_FILES.items():
@@ -116,7 +121,7 @@ def main():
 
     for xml in [BODY_XML] + [ROOT / p for p in WHEEL_FILES]:
         for rel in re.findall(r'DiffuseMap="([^"]+)"', xml.read_text(encoding='utf-8')):
-            if not (ROOT / "build/release" / rel).is_file():
+            if Path(rel).name != rel or not (TEXTURES / rel).is_file():
                 raise RuntimeError("XML references missing texture: " + rel)
     print("MATERIAL_XML_GENERATION_OK")
 
