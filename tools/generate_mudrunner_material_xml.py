@@ -112,7 +112,7 @@ def main():
     # Validate every referenced texture exists in the release texture directory.
     for xml in [BODY_XML] + [ROOT / p for p in WHEEL_FILES]:
         for rel in re.findall(r'DiffuseMap="([^"]+)"', xml.read_text(encoding="utf-8")):
-            if not (ROOT / rel).is_file():
+            if not (ROOT / "build/release" / rel).is_file():
                 raise RuntimeError("XML references missing texture: " + rel)
     print("MATERIAL_XML_GENERATION_OK")
 
