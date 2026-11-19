@@ -48,7 +48,7 @@ report = {
             "wheel_pivot_end_b_side_b",
             "wheel_pivot_end_a_side_b",
         )
-        if re.search(r"\\bFrame\\s+" + re.escape(name) + r"\\s*\\{", text)
+        if re.search(r"\bFrame\s+" + re.escape(name) + r"\s*\{", text)
     ],
     "wheel_candidate_note": "Source mesh names are geometry-based candidates. Pivot frame names are experimental and must be inspected in MudRunner Editor.",
     "warning": "Structural text check only; does not prove MudRunner Editor or in-game compatibility."
