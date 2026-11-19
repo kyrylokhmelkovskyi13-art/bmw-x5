@@ -1,0 +1,23 @@
+name: Build BMW M67D44 sound pack
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "tools/generate_diesel_v8_sounds.py"
+      - ".github/workflows/build-sound-pack.yml"
+jobs:
+  build-sounds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate original synthesized WAV assets
+        run: python3 tools/generate_diesel_v8_sounds.py
+      - name: Package sound pack
+        run: |
+          cp sounds/engine/bmw_m67d44/README_RU.md build/bmw_m67d44_sounds/README_RU.md
+          cd build && zip -r bmw_x5_m67d44_sound_pack.zip bmw_m67d44_sounds
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bmw-x5-m67d44-sound-pack
+          path: build/bmw_x5_m67d44_sound_pack.zip
+          retention-days: 14
