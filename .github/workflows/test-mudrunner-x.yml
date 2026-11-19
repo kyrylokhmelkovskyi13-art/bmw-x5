@@ -3,7 +3,8 @@ name: Test MudRunner X export
 on:
   push:
     paths:
-      - "tools/export_mudrunner_x.py"\n      - "tools/validate_x_export.py"
+      - "tools/export_mudrunner_x.py"
+      - "tools/validate_x_export.py"
       - ".github/workflows/test-mudrunner-x.yml"
   workflow_dispatch:
 
@@ -33,13 +34,17 @@ jobs:
           mkdir -p build/export
           set -o pipefail
           /tmp/blender-2.78c-linux-glibc219-x86_64/blender --background --python tools/export_mudrunner_x.py -- --obj build/blender/bmw_x5_interchange.obj --addon-dir /tmp/io_scene_mudrunner --out build/export/bmw_x5_static_test.x 2>&1 | tee build/export-test.log
-      - name: Validate DirectX structure\n        if: success()\n        run: python3 tools/validate_x_export.py build/export/bmw_x5_static_test.x --report build/export/x_structure_report.json\n      - name: Upload experimental export and log
+      - name: Validate DirectX structure
+        if: success()
+        run: python3 tools/validate_x_export.py build/export/bmw_x5_static_test.x --report build/export/x_structure_report.json
+      - name: Upload experimental export and log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bmw-x5-mudrunner-x-export-test
           path: |
             build/export/bmw_x5_static_test.x
-            build/export-test.log\n            build/export/x_structure_report.json
+            build/export-test.log
+            build/export/x_structure_report.json
           if-no-files-found: warn
           retention-days: 14
