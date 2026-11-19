@@ -11,14 +11,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Blender and utilities
+
+      - name: Install only Blender runtime libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender libglu1-mesa libgl1
+          sudo apt-get install -y libglu1-mesa libgl1
+
+      - name: Download portable Blender 4.2 LTS
+        run: |
+          set -eux
+          BLENDER_VERSION=4.2.0
+          curl --retry 3 --retry-delay 2 -L --fail \
+            -o /tmp/blender-4.2.0-linux-x64.tar.xz \
+            https://download.blender.org/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz
+          tar -xJf /tmp/blender-4.2.0-linux-x64.tar.xz -C /tmp
+          echo "/tmp/blender-${BLENDER_VERSION}-linux-x64" >> "$GITHUB_PATH"
+          /tmp/blender-${BLENDER_VERSION}-linux-x64/blender --version
+          /tmp/blender-${BLENDER_VERSION}-linux-x64/blender --background --python-expr "import numpy; print('NUMPY_OK', numpy.__version__)"
+
       - name: Split Object_97 into four rims and pair with tires
         run: |
+          set -euxo pipefail
           mkdir -p build/split build/export
-          blender --background --python tools/split_bmw_x5_wheels.py -- --source bmw-x5.glb --out build/split
+          /tmp/blender-4.2.0-linux-x64/blender --background \
+            --python tools/split_bmw_x5_wheels.py -- \
+            --source bmw-x5.glb --out build/split
+          test -s build/split/bmw_x5_body.obj
+          test -s build/split/wheel_a_side_a.obj
+          test -s build/split/wheel_a_side_b.obj
+          test -s build/split/wheel_b_side_a.obj
+          test -s build/split/wheel_b_side_b.obj
+          test -s build/split/SPLIT_REPORT.txt
+          echo "All split OBJ files and report are present."
+
       - name: Download Blender 2.78c and MudRunner exporter
         run: |
           set -eux
@@ -27,9 +52,10 @@ jobs:
           curl -L --fail -o /tmp/io_scene_mudrunner.zip https://github.com/fred-rum/io_scene_mudrunner/archive/refs/heads/master.zip
           unzip -q /tmp/io_scene_mudrunner.zip -d /tmp
           mv /tmp/io_scene_mudrunner-master /tmp/io_scene_mudrunner
+
       - name: Export chassis and four separate wheel files
         run: |
-          set -eux
+          set -euxo pipefail
           BLENDER=/tmp/blender-2.78c-linux-glibc219-x86_64/blender
           ADDON=/tmp/io_scene_mudrunner
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/bmw_x5_body.obj --addon-dir "$ADDON" --out build/export/bmw_x5.x
@@ -37,20 +63,30 @@ jobs:
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_b.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_b.x --pivot-name wheel_pivot_end_a_side_b
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_b_side_a.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_b_side_a.x --pivot-name wheel_pivot_end_b_side_a
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_b_side_b.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_b_side_b.x --pivot-name wheel_pivot_end_b_side_b
+          test -s build/export/bmw_x5.x
+          test -s build/export/wheels/wheel_a_side_a.x
+          test -s build/export/wheels/wheel_a_side_b.x
+          test -s build/export/wheels/wheel_b_side_a.x
+          test -s build/export/wheels/wheel_b_side_b.x
+
       - name: Assemble release archive
         run: |
+          set -euxo pipefail
           mkdir -p build/release/wheels
           cp build/split/SPLIT_REPORT.txt build/release/
           cp build/export/bmw_x5.x build/release/
           cp build/export/wheels/*.x build/release/wheels/
           cd build/release
           zip -qr ../../BMW_X5_MudRunner_Wheel_Split.zip .
+          test -s ../../BMW_X5_MudRunner_Wheel_Split.zip
+
       - uses: actions/upload-artifact@v4
         with:
           name: BMW_X5_MudRunner_Wheel_Split
           path: BMW_X5_MudRunner_Wheel_Split.zip
           if-no-files-found: error
           retention-days: 30
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
