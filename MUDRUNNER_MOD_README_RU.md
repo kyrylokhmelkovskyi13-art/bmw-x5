@@ -63,4 +63,13 @@ Truck class и назначить реальные кадры/колёса.
 - [io_scene_mudrunner — Blender exporter](https://github.com/fred-rum/io_scene_mudrunner)
 - [Описание ограничений экспортёра и его применения](https://www.mudrunnermods.com/spintires-mudrunner-map-making-big-book/#mudrunner-exporter-for-blender)
 
+## Пробный экспорт DirectX .X
+Добавлен автоматический эксперимент:
+- `tools/export_mudrunner_x.py` импортирует OBJ в Blender 2.78 и вызывает экспортёр MudRunner;
+- экспорт выполняется с `FlattenType=none`, чтобы не запекать все трансформации в вершины;
+- `tools/validate_x_export.py` проверяет заголовок DirectX и считает блоки Frame/Mesh/Material/Normals/UV;
+- workflow `.github/workflows/test-mudrunner-x.yml` сохраняет .X и отчёт в GitHub Actions artifacts.
+
+Это только структурная проверка текстового .X. Она не подтверждает корректность координат, collision, физики, материалов или загрузку в MudRunner Editor.
+
 **Не считать этот репозиторий готовым игровым модом до успешной проверки в игре.**
