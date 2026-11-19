@@ -1,0 +1,36 @@
+name: Inspect BMW X5 GLB
+
+on:
+  push:
+    paths:
+      - "bmw-x5.glb"
+      - "tools/inspect_glb.py"
+      - ".github/workflows/inspect-model.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Inspect model and extract embedded textures
+        run: python tools/inspect_glb.py bmw-x5.glb --out build
+      - name: Save model structure report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build/model_report.json
+          if git diff --cached --quiet; then
+            echo "No report changes."
+          else
+            git commit -m "Generate BMW X5 GLB structure report [skip ci]"
+            git push
+          fi
