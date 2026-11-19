@@ -1,0 +1,34 @@
+name: Prepare BMW X5 geometry
+
+on:
+  push:
+    paths:
+      - "bmw-x5.glb"
+      - "tools/blender_prepare.py"
+      - ".github/workflows/prepare-geometry.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender
+      - name: Import GLB and prepare interchange geometry
+        run: blender --background --python tools/blender_prepare.py -- --out build/blender
+      - name: Upload geometry inventory and OBJ interchange export
+        uses: actions/upload-artifact@v4
+        with:
+          name: bmw-x5-geometry-preparation
+          path: |
+            build/blender/geometry_inventory.json
+            build/blender/bmw_x5_interchange.obj
+            build/blender/bmw_x5_interchange.mtl
+          if-no-files-found: error
+          retention-days: 14
