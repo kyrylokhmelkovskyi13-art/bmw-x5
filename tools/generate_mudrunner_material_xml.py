@@ -35,8 +35,8 @@ def read_glb(path):
         offset += 8
         chunk = data[offset:offset + length]
         offset += length
-        if kind == 0x4E4E4F534A:
-            doc = json.loads(chunk.rstrip(b" \\t\\r\\n").decode("utf-8"))
+        if kind == 0x4E4F534A:
+            doc = json.loads(chunk.rstrip().decode("utf-8"))
         elif kind == 0x004E4942:
             binary = chunk
     if doc is None:
