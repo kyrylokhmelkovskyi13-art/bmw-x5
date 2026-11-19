@@ -32,5 +32,7 @@ jobs:
             build/blender/bmw_x5_interchange.mtl
             build/blender/wheel_candidates.obj
             build/blender/wheel_candidates.mtl
+            build/blender/interior_zone_candidates.obj
+            build/blender/interior_zone_candidates.mtl
           if-no-files-found: error
           retention-days: 14
