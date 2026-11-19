@@ -26,8 +26,11 @@ def load_glb(path: Path):
     while offset + 8 <= len(data):
         chunk_length, chunk_type = struct.unpack_from("<II", data, offset)
         offset += 8
-        chunk = data[offset:offset + chunk_length]
-        offset += chunk_length
+        chunk_end = offset + chunk_length
+        if chunk_end > len(data):
+            raise ValueError("GLB chunk extends beyond end of file")
+        chunk = data[offset:chunk_end]
+        offset = chunk_end
         if chunk_type == 0x4E4F534A:
             document = json.loads(chunk.decode("utf-8").rstrip(" \t\r\n\0"))
         elif chunk_type == 0x004E4942:
@@ -81,6 +84,9 @@ def main():
     nodes = doc.get("nodes", [])
     meshes = doc.get("meshes", [])
     materials = doc.get("materials", [])
+    scenes = doc.get("scenes", [])
+    active_scene = doc.get("scene", 0)
+    scene_roots = scenes[active_scene].get("nodes", []) if scenes and active_scene < len(scenes) else []
     report = {
         "source": args.glb.name,
         "asset": doc.get("asset", {}),
@@ -90,6 +96,8 @@ def main():
             "materials": len(materials),
             "images": len(doc.get("images", []))
         },
+        "active_scene": active_scene,
+        "scene_root_nodes": scene_roots,
         "nodes": [
             {
                 "index": i,
@@ -104,7 +112,13 @@ def main():
         ],
         "meshes": [
             {"index": i, "name": mesh.get("name", f"mesh_{i}"),
-             "primitive_count": len(mesh.get("primitives", []))}
+             "primitive_count": len(mesh.get("primitives", [])),
+             "primitives": [
+                 {"material": primitive.get("material"),
+                  "mode": primitive.get("mode", 4),
+                  "attributes": sorted(primitive.get("attributes", {}).keys())}
+                 for primitive in mesh.get("primitives", [])
+             ]}
             for i, mesh in enumerate(meshes)
         ],
         "materials": [
