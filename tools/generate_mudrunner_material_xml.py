@@ -74,7 +74,7 @@ def main():
 
     def x_materials(path):
         source = path.read_text(encoding="utf-8", errors="replace")
-        names = re.findall(r"\\bMaterial\\s+([^\\s{]+)\\s*\\{", source)
+        names = re.findall(r"\bMaterial\s+([^\s{]+)\s*\{", source)
         # Preserve order while removing duplicate declarations.
         return list(dict.fromkeys(names))
 
@@ -102,7 +102,7 @@ def main():
                         (name.replace("&", "&amp;").replace('"', "&quot;"), diffuse))
         rows.append("</CombineXMesh>")
         xml_path.parent.mkdir(parents=True, exist_ok=True)
-        xml_path.write_text("\\n".join(rows) + "\\n", encoding="utf-8")
+        xml_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
         print("GENERATED", xml_path, "materials=", len(names))
 
     make_xml(BODY_X, BODY_XML)
