@@ -110,7 +110,7 @@ def main():
         rows.append('</CombineXMesh>')
         xml_path.parent.mkdir(parents=True, exist_ok=True)
         xml_path.write_text('\n'.join(rows) + '\n', encoding='utf-8')
-        generated_names = re.findall(r'<Material\\s+Name="([^"]+)"', xml_path.read_text(encoding='utf-8'))
+        generated_names = re.findall(r'<Material\s+Name="([^"]+)"', xml_path.read_text(encoding='utf-8'))
         if len(generated_names) != len(set(generated_names)):
             raise RuntimeError("Duplicate <Material> entries generated in " + str(xml_path))
         print("GENERATED", xml_path, "materials=", len(generated_names))
