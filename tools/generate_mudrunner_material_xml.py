@@ -95,9 +95,14 @@ def main():
                 rgba = entry['factor']
                 color = tuple(max(0, min(255, round(float(v) * 255))) for v in rgba)
                 safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", name)
+                # MudRunner treats "__" as a semantic texture-postfix marker.
+                # Collapse repeated underscores before creating the filename.
+                safe_name = re.sub(r"_{2,}", "_", safe_name)
                 target = TEXTURES / ("solid_" + safe_name + ".tga")
                 Image.new('RGBA', (16, 16), color).save(target, format='TGA')
                 diffuse = "textures/" + target.name
+            if "__" in Path(diffuse).name:
+                raise RuntimeError("Invalid MudRunner texture filename contains '__': " + diffuse)
             escaped_name = name.replace("&", "&amp;").replace(chr(34), "&quot;")
             rows.append('  <Material Name="%s" DiffuseMap="%s" />' % (escaped_name, diffuse))
         rows.append('</CombineXMesh>')
