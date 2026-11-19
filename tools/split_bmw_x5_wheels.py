@@ -110,6 +110,47 @@ def split_rim_faces_by_nearest_tire(rim, tire_centers):
     return created, {key: len(value["faces"]) for key, value in buckets.items()}
 
 
+def extract_gltf_textures(out_dir):
+    """Save every image imported from the GLB and write a material/image manifest."""
+    texture_dir = out_dir / "textures"
+    texture_dir.mkdir(parents=True, exist_ok=True)
+    image_names = {}
+    for index, image in enumerate(bpy.data.images):
+        if image.type == "RENDER_RESULT" or image.size[0] == 0 or image.size[1] == 0:
+            continue
+        base = Path(image.name).stem or ("gltf_image_%02d" % index)
+        safe = "".join(ch if ch.isalnum() or ch in "-_." else "_" for ch in base)
+        filename = "%02d_%s.png" % (index, safe)
+        target = texture_dir / filename
+        image.file_format = "PNG"
+        image.save(filepath=str(target))
+        if not target.is_file() or target.stat().st_size == 0:
+            raise RuntimeError("Failed to extract GLB image: " + image.name)
+        image_names[image.name] = "textures/" + filename
+
+    lines = ["BMW X5 E53 material and texture inventory", "",
+             "Extracted images (PNG):"]
+    for name, path in sorted(image_names.items()):
+        lines.append("%s -> %s" % (name, path))
+    lines += ["", "Material slots and linked base-color images:"]
+    for material in bpy.data.materials:
+        lines.append("MATERIAL: " + material.name)
+        found = False
+        if material.use_nodes and material.node_tree:
+            for node in material.node_tree.nodes:
+                if node.type == "TEX_IMAGE" and node.image:
+                    found = True
+                    lines.append("  IMAGE: %s -> %s" % (
+                        node.image.name, image_names.get(node.image.name, "NOT_EXTRACTED")
+                    ))
+        if not found:
+            lines.append("  IMAGE: none linked through an image-texture node")
+    (out_dir / "MATERIAL_TEXTURE_INVENTORY.txt").write_text(
+        "\n".join(lines) + "\n", encoding="utf-8"
+    )
+    print("GLTF_TEXTURES_EXTRACTED", len(image_names))
+
+
 def main():
     args = arguments()
     out = Path(args.out).resolve()
@@ -120,6 +161,7 @@ def main():
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=str(source))
+    extract_gltf_textures(out)
     scene_meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
     by_name = {obj.name: obj for obj in scene_meshes}
     required = [RIM_NAME] + [value[0] for value in WHEEL_MAP.values()]
