@@ -31,7 +31,7 @@ meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
 if not meshes:
     raise RuntimeError("OBJ import produced no mesh objects")
 if args.pivot_name:
-    points = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]
+    points = [o.matrix_world * Vector(c) for o in meshes for c in o.bound_box]
     center = sum(points, Vector()) / len(points)
     pivot = bpy.data.objects.new(args.pivot_name, None)
     bpy.context.scene.objects.link(pivot)
