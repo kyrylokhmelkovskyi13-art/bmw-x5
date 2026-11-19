@@ -124,3 +124,21 @@ pivot относительно ступицы или поведения подв
 - [ ] Проверить загрузку, руление, подвеску и звук у тестировщика в игре.
 
 **Важно:** пока не выполнены последние пункты, ZIP проекта нельзя называть готовым игровым модом.
+
+
+## Дополнительно найденные официальные примеры MudRunner
+
+Проверен публичный список файлов Steam depot **716021 — MudRunner - Map Editor and Mod Converter Content**. В нём действительно перечислены оригинальные примеры редактора:
+- `Samples/mod_addon/classes/trucks/trailer_tent_highway.xml` (5.82 KiB) — полноценный XML класса прицепа;
+- `Samples/mod_truck_inherited/classes/trucks/ural432011.xml` (375 B) — пример наследуемого truck-класса;
+- `Samples/mod_truck_inherited/meshes/trucks/ural432011.xml` (956 B) — описание mesh;
+- `Samples/mod_truck_inherited/meshes/trucks/ural432011.x` (3.10 MiB) — модель;
+- `Samples/mod_truck_inherited/classes/wheels/ural_offroad_new.xml` — пример класса колёс.
+
+Это именно файлы редактора оригинального MudRunner, а не SnowRunner. Однако публичная страница SteamDB показывает список и размеры, а не содержимое XML. Поэтому я пока не переношу неизвестные поля из этих файлов в BMW XML.
+
+Официальный гайд подтверждает, что truck XML создаётся командой **New truck...** в MudRunner Editor. Самый короткий достоверный путь получить корректную основу — извлечь один из перечисленных sample XML из depot Editor или создать новый truck XML в редакторе. После получения содержимого можно безопасно адаптировать секции и затем связать их с проверенными frame names BMW.
+
+Источники:
+- [SteamDB — содержимое оригинального MudRunner Editor depot 716021](https://steamdb.info/depot/716021/manifests/)
+- [Официальный Modding Guide MudRunner](https://cdn.focus-home.com/admin/games/mudrunner/docs/ModdingGuide_Mudrunner.pdf)
