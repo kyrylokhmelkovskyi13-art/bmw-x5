@@ -45,4 +45,22 @@
 принимает редактор оригинального MudRunner. Затем через MudRunner Editor создать
 Truck class и назначить реальные кадры/колёса.
 
+## Найденный путь экспорта в .X
+Найдена отдельная Blender-надстройка [io_scene_mudrunner](https://github.com/fred-rum/io_scene_mudrunner),
+которая заявлена как экспортёр DirectX для Spintires: MudRunner. По её README она
+рассчитана на Blender 2.78 и старше/совместимые версии; это не означает, что она
+проверена на нашей BMW или на грузовиках с такой структурой.
+
+Официальное руководство MudRunner требует единственный корневой объект, ориентацию
+грузовика вдоль X, физические объекты с collision-моделями и корректные кадры
+иерархии. Оно описывает экспорт через 3ds Max 2012 и kW X-port. Поэтому следующий
+технический эксперимент — проверить старый MudRunner-экспортёр на импортированной
+геометрии BMW и затем открыть результат в MudRunner Editor. Сам факт создания .X
+не будет считаться подтверждением совместимости.
+
+Источники:
+- [Официальное руководство MudRunner (PDF)](https://cdn.focus-home.com/admin/games/mudrunner/docs/ModdingGuide_Mudrunner.pdf)
+- [io_scene_mudrunner — Blender exporter](https://github.com/fred-rum/io_scene_mudrunner)
+- [Описание ограничений экспортёра и его применения](https://www.mudrunnermods.com/spintires-mudrunner-map-making-big-book/#mudrunner-exporter-for-blender)
+
 **Не считать этот репозиторий готовым игровым модом до успешной проверки в игре.**
