@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "tools/generate_diesel_v8_sounds.py"
+      - "tools/validate_diesel_v8_sounds.py"
       - ".github/workflows/build-sound-pack.yml"
 jobs:
   build-sounds:
@@ -12,7 +13,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Generate original synthesized WAV assets
         run: python3 tools/generate_diesel_v8_sounds.py
-      - name: Validate generated WAV files\n        run: python3 tools/validate_diesel_v8_sounds.py\n      - name: Package sound pack
+      - name: Validate generated WAV files
+        run: python3 tools/validate_diesel_v8_sounds.py
+      - name: Package sound pack
         run: |
           cp sounds/engine/bmw_m67d44/README_RU.md build/bmw_m67d44_sounds/README_RU.md
           cd build && zip -r bmw_x5_m67d44_sound_pack.zip bmw_m67d44_sounds
