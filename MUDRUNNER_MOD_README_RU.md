@@ -142,3 +142,29 @@ pivot относительно ступицы или поведения подв
 Источники:
 - [SteamDB — содержимое оригинального MudRunner Editor depot 716021](https://steamdb.info/depot/716021/manifests/)
 - [Официальный Modding Guide MudRunner](https://cdn.focus-home.com/admin/games/mudrunner/docs/ModdingGuide_Mudrunner.pdf)
+
+
+## Получение настоящих XML-примеров из Steam depot
+
+Удалось подтвердить по публичному списку SteamDB, что в оригинальном depot редактора MudRunner `716021` лежат реальные исходники примеров. Для BMW важнее всего:
+- `Samples/mod_addon/classes/trucks/trailer_tent_highway.xml` — полный пример класса транспорта (прицепа), 5.82 KiB;
+- `Samples/mod_truck_inherited/classes/trucks/ural432011.xml` — пример наследуемого truck-класса, 375 B;
+- `Samples/mod_truck_inherited/meshes/trucks/ural432011.xml` — mesh XML, 956 B;
+- `Samples/mod_truck_inherited/classes/wheels/ural_offroad_new.xml` — wheel class, 96 B.
+
+Публичная страница SteamDB раскрывает имена и размеры, но не текст файлов. Поэтому эти XML нельзя копировать или реконструировать по одному только списку.
+
+### Как извлечь образцы на компьютере тестировщика
+
+1. В Steam открыть **Библиотека → Инструменты** и установить **MudRunner - Editor**, если он доступен в аккаунте.
+2. Открыть папку установленного инструмента и найти каталог `Samples`.
+3. Скопировать перечисленные выше четыре XML-файла и передать их разработчику (можно одним ZIP).
+4. Не нужно присылать весь depot, игру или личные данные Steam.
+
+Альтернативно, в Steam Console можно запросить публичный depot командой:
+`download_depot 716020 716021 863081069397177483`
+Steam должен иметь доступ к инструменту/depot; команда не гарантирует загрузку, если доступ ограничен аккаунтом или Steam изменит manifest.
+
+После получения настоящих XML можно адаптировать только подтверждённые поля и отдельно сверить, какие кадры существуют в BMW .X. Пока sample XML не получены, `classes/trucks/bmw_x5.xml` намеренно не создаётся как якобы рабочий файл.
+
+Источник списка файлов и manifest: [SteamDB depot 716021](https://steamdb.info/depot/716021/).
