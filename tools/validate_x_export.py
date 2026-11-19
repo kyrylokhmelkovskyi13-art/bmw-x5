@@ -36,10 +36,10 @@ report = {
     "material_count": materials,
     "mesh_normals_blocks": mesh_normals,
     "uv_blocks": mesh_uv,
-    "frame_names": re.findall(r"\\bFrame\\s+([^\\s{]+)\\s*\\{", text),
+    "frame_names": re.findall(r"\bFrame\s+([^\\s{]+)\s*\{", text),
     "wheel_candidate_frames": [
         name for name in ("Object_98", "Object_99", "Object_100", "Object_101")
-        if re.search(r"\\bFrame\\s+" + re.escape(name) + r"\\s*\\{", text)
+        if re.search(r"\bFrame\s+" + re.escape(name) + r"\s*\{", text)
     ],
     "wheel_candidate_note": "Names are carried over from the source GLB object indices; wheel function is a geometry-based candidate and must be checked in MudRunner Editor.",
     "warning": "Structural text check only; does not prove MudRunner Editor or in-game compatibility."
