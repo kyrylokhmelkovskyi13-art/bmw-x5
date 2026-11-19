@@ -41,7 +41,16 @@ report = {
         name for name in ("Object_98", "Object_99", "Object_100", "Object_101")
         if re.search(r"\bFrame\s+" + re.escape(name) + r"\s*\{", text)
     ],
-    "wheel_candidate_note": "Names are carried over from the source GLB object indices; wheel function is a geometry-based candidate and must be checked in MudRunner Editor.",
+    "wheel_pivot_frames": [
+        name for name in (
+            "wheel_pivot_end_a_side_a",
+            "wheel_pivot_end_b_side_a",
+            "wheel_pivot_end_b_side_b",
+            "wheel_pivot_end_a_side_b",
+        )
+        if re.search(r"\\bFrame\\s+" + re.escape(name) + r"\\s*\\{", text)
+    ],
+    "wheel_candidate_note": "Source mesh names are geometry-based candidates. Pivot frame names are experimental and must be inspected in MudRunner Editor.",
     "warning": "Structural text check only; does not prove MudRunner Editor or in-game compatibility."
 }
 out = Path(a.report)
@@ -50,3 +59,5 @@ out.write_text(json.dumps(report, indent=2), encoding="utf-8")
 print(json.dumps(report, indent=2))
 if meshes == 0:
     raise SystemExit("FAIL: no Mesh blocks found")
+if len(report["wheel_pivot_frames"]) != 4:
+    raise SystemExit("FAIL: expected four exported wheel pivot frames; found %d" % len(report["wheel_pivot_frames"]))
