@@ -23,6 +23,13 @@ jobs:
           python-version: "3.12"
       - name: Inspect model and extract embedded textures
         run: python tools/inspect_glb.py bmw-x5.glb --out build
+      - name: Upload inspection report and extracted textures
+        uses: actions/upload-artifact@v4
+        with:
+          name: bmw-x5-glb-inspection
+          path: build/
+          if-no-files-found: error
+          retention-days: 14
       - name: Save model structure report
         run: |
           git config user.name "github-actions[bot]"
