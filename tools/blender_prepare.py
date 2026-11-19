@@ -56,16 +56,22 @@ for row in rows:
             "axle_axis_candidate": "X (smallest bounding dimension)",
         })
 
-# Broad cabin-zone shortlist for manual visual inspection. This does not identify
-# a steering wheel automatically; it only isolates meshes in the likely cabin volume.
+# Cabin-zone shortlist. Include meshes whose bounds intersect the cabin and
+# dashboard volume, even when the model author merged several parts into one mesh.
 interior_candidates = []
 for row in rows:
-    x, y, z = row["center"]
-    dx, dy, dz = row["dimensions"]
-    if abs(x) <= 0.95 and -1.35 <= y <= 1.35 and 0.05 <= z <= 0.85 and max(dx, dy, dz) <= 1.25:
+    lo = row["bounds_min"]
+    hi = row["bounds_max"]
+    intersects_cabin = (
+        hi[0] >= -0.95 and lo[0] <= 0.95 and
+        hi[1] >= -1.85 and lo[1] <= 0.95 and
+        hi[2] >= -0.05 and lo[2] <= 1.20
+    )
+    if intersects_cabin and max(row["dimensions"]) <= 3.2:
         interior_candidates.append({
             "name": row["name"], "center": row["center"],
-            "dimensions": row["dimensions"], "materials": row["materials"],
+            "dimensions": row["dimensions"], "bounds_min": lo,
+            "bounds_max": hi, "materials": row["materials"],
             "vertices": row["vertices"], "polygons": row["polygons"],
         })
 
