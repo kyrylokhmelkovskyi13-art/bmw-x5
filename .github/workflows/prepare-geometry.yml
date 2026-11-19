@@ -22,12 +22,15 @@ jobs:
           sudo apt-get install -y blender python3-numpy
       - name: Import GLB and prepare interchange geometry
         run: blender --background --python tools/blender_prepare.py -- --out build/blender
+      - name: Generate measured wheel pivot candidates
+        run: python3 tools/analyze_wheel_pivots.py build/blender/geometry_inventory.json --out build/blender/wheel_pivot_candidates.json
       - name: Upload geometry inventory and OBJ interchange export
         uses: actions/upload-artifact@v4
         with:
           name: bmw-x5-geometry-preparation
           path: |
             build/blender/geometry_inventory.json
+            build/blender/wheel_pivot_candidates.json
             build/blender/bmw_x5_interchange.obj
             build/blender/bmw_x5_interchange.mtl
             build/blender/wheel_candidates.obj
