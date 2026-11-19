@@ -1,0 +1,68 @@
+"""Run inside Blender: blender -b --python tools/blender_prepare.py -- --out build/blender"""
+import bpy
+import json
+import sys
+from pathlib import Path
+from mathutils import Vector
+
+def arg_value(flag, default):
+    args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    return Path(args[args.index(flag) + 1]) if flag in args else Path(default)
+
+out = arg_value("--out", "build/blender")
+out.mkdir(parents=True, exist_ok=True)
+
+# Start from an empty scene and import the source GLB.
+bpy.ops.wm.read_factory_settings(use_empty=True)
+source = Path("bmw-x5.glb").resolve()
+if not source.exists():
+    raise FileNotFoundError(source)
+bpy.ops.import_scene.gltf(filepath=str(source))
+
+rows = []
+for obj in sorted(bpy.context.scene.objects, key=lambda x: x.name):
+    if obj.type != "MESH" or obj.data is None:
+        continue
+    corners = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+    mins = [min(v[i] for v in corners) for i in range(3)]
+    maxs = [max(v[i] for v in corners) for i in range(3)]
+    dims = [maxs[i] - mins[i] for i in range(3)]
+    center = [(maxs[i] + mins[i]) / 2 for i in range(3)]
+    rows.append({
+        "name": obj.name,
+        "vertices": len(obj.data.vertices),
+        "polygons": len(obj.data.polygons),
+        "materials": [m.name if m else None for m in obj.data.materials],
+        "bounds_min": mins,
+        "bounds_max": maxs,
+        "dimensions": dims,
+        "center": center,
+        "rotation_euler": list(obj.matrix_world.to_euler()),
+    })
+
+report = {
+    "source": source.name,
+    "units": "Blender scene units; source GLB unit scale retained",
+    "object_count": len(rows),
+    "objects": rows,
+    "note": "Bounds are measured from imported geometry. Object labels do not identify mechanical function by themselves."
+}
+(out / "geometry_inventory.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+# Export all imported mesh objects to Wavefront OBJ as an interchange format.
+# This is NOT the proprietary MudRunner .X format.
+bpy.ops.object.select_all(action="DESELECT")
+for obj in bpy.context.scene.objects:
+    if obj.type == "MESH":
+        obj.select_set(True)
+bpy.context.view_layer.objects.active = next((o for o in bpy.context.scene.objects if o.type == "MESH"), None)
+if hasattr(bpy.ops.wm, "obj_export"):
+    bpy.ops.wm.obj_export(
+        filepath=str((out / "bmw_x5_interchange.obj").resolve()),
+        export_selected_objects=True,
+        export_materials=True,
+    )
+else:
+    raise RuntimeError("This Blender build has no Wavefront OBJ exporter")
+
+print("Prepared geometry inventory for", len(rows), "mesh objects")
