@@ -5,6 +5,8 @@ on:
     paths:
       - "bmw-x5.glb"
       - "tools/blender_prepare.py"
+      - "tools/analyze_wheel_pivots.py"
+      - "tools/analyze_wheel_layout.py"
       - ".github/workflows/prepare-geometry.yml"
   workflow_dispatch:
 
@@ -24,6 +26,8 @@ jobs:
         run: blender --background --python tools/blender_prepare.py -- --out build/blender
       - name: Generate measured wheel pivot candidates
         run: python3 tools/analyze_wheel_pivots.py build/blender/geometry_inventory.json --out build/blender/wheel_pivot_candidates.json
+      - name: Measure source-coordinate wheel layout
+        run: python3 tools/analyze_wheel_layout.py build/blender/geometry_inventory.json --out build/blender/wheel_layout_report.json
       - name: Upload geometry inventory and OBJ interchange export
         uses: actions/upload-artifact@v4
         with:
@@ -31,6 +35,7 @@ jobs:
           path: |
             build/blender/geometry_inventory.json
             build/blender/wheel_pivot_candidates.json
+            build/blender/wheel_layout_report.json
             build/blender/bmw_x5_interchange.obj
             build/blender/bmw_x5_interchange.mtl
             build/blender/wheel_candidates.obj
