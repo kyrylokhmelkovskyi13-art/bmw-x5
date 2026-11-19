@@ -6,6 +6,7 @@ import sys
 
 import bpy
 
+
 def parse_args():
     argv = sys.argv
     argv = argv[argv.index("--") + 1:] if "--" in argv else []
@@ -15,14 +16,20 @@ def parse_args():
     parser.add_argument("--out", required=True)
     return parser.parse_args(argv)
 
+
 args = parse_args()
 obj_path = os.path.abspath(args.obj)
 out_path = os.path.abspath(args.out)
 addon_dir = os.path.abspath(args.addon_dir)
-os.makedirs(os.path.dirname(out_path), exist_ok=True)
+if not os.path.isdir(addon_dir):
+    raise RuntimeError("MudRunner exporter addon directory does not exist: " + addon_dir)
+if not os.path.isfile(obj_path):
+    raise RuntimeError("OBJ input does not exist: " + obj_path)
+if not os.path.isdir(os.path.dirname(out_path)):
+    os.makedirs(os.path.dirname(out_path))
 
-# Start with a clean scene. The OBJ importer preserves the exported object names.
-bpy.ops.wm.read_factory_settings(use_empty=True)
+# Blender 2.78 predates the use_empty argument supported by newer releases.
+bpy.ops.wm.read_factory_settings()
 sys.path.insert(0, os.path.dirname(addon_dir))
 import io_scene_mudrunner
 io_scene_mudrunner.register()
@@ -32,8 +39,8 @@ objects = [o for o in bpy.context.scene.objects if o.type == "MESH"]
 if not objects:
     raise RuntimeError("OBJ import produced no mesh objects")
 
-# This is deliberately a static geometry/exporter compatibility test only.
-# It does not create MudRunner physics frames, collision meshes, or truck XML.
+# Static geometry test only: truck physics frames, collision and vehicle XML
+# must be authored separately before this can be a playable MudRunner truck.
 result = bpy.ops.export_scene.mudrunner(
     filepath=out_path,
     SelectedOnly=False,
