@@ -30,6 +30,10 @@ if not os.path.isdir(os.path.dirname(out_path)):
 
 # Blender 2.78 predates the use_empty argument supported by newer releases.
 bpy.ops.wm.read_factory_settings()
+# Blender 2.78 factory settings create a default Cube. Remove every scene
+# object before importing so no placeholder geometry leaks into the truck.
+bpy.ops.object.select_all(action="SELECT")
+bpy.ops.object.delete(use_global=False)
 sys.path.insert(0, os.path.dirname(addon_dir))
 import io_scene_mudrunner
 io_scene_mudrunner.register()
