@@ -136,7 +136,7 @@ jobs:
               content = path.read_text(encoding="utf-8")
               ET.fromstring(content)
               for attr in forbidden:
-                  assert not re.search(r"\\b" + re.escape(attr) + r"\\s*=", content), (
+                  assert not re.search(r"\b" + re.escape(attr) + r"\s*=", content), (
                       "Unsupported attribute %s remains in %s" % (attr, path)
                   )
           truck = ET.parse(root / "trucks/bmw_x5.xml").getroot()
