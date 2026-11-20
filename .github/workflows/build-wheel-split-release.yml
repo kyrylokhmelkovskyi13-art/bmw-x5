@@ -73,10 +73,15 @@ jobs:
           BLENDER=/tmp/blender-2.78c-linux-glibc219-x86_64/blender
           ADDON=/tmp/io_scene_mudrunner
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/bmw_x5_body.obj --addon-dir "$ADDON" --out build/export/bmw_x5.x
-          $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_a.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_a.x --pivot-name wheel_pivot_end_a_side_a
-          $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_b.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_b.x --pivot-name wheel_pivot_end_a_side_b
-          $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_b_side_a.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_b_side_a.x --pivot-name wheel_pivot_end_b_side_a
-          $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_b_side_b.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_b_side_b.x --pivot-name wheel_pivot_end_b_side_b
+          $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_a.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_a.x --pivot-name wheel_pivot_end_a_side_a 2>&1 | tee build/export/wheels/wheel_a_side_a.log
+          $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_b.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_b.x --pivot-name wheel_pivot_end_a_side_b 2>&1 | tee build/export/wheels/wheel_a_side_b.log
+          $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_b_side_a.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_b_side_a.x --pivot-name wheel_pivot_end_b_side_a 2>&1 | tee build/export/wheels/wheel_b_side_a.log
+          $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_b_side_b.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_b_side_b.x --pivot-name wheel_pivot_end_b_side_b 2>&1 | tee build/export/wheels/wheel_b_side_b.log
+          test "$(grep -h -c WHEEL_PIVOT_ORIGIN_ZERO_OK build/export/wheels/*.log | awk -F: '{sum += $NF} END {print sum}')" = 4
+          grep -q "Frame wheel_pivot_end_a_side_a" build/export/wheels/wheel_a_side_a.x
+          grep -q "Frame wheel_pivot_end_a_side_b" build/export/wheels/wheel_a_side_b.x
+          grep -q "Frame wheel_pivot_end_b_side_a" build/export/wheels/wheel_b_side_a.x
+          grep -q "Frame wheel_pivot_end_b_side_b" build/export/wheels/wheel_b_side_b.x
           test -s build/export/bmw_x5.x
           test -s build/export/wheels/wheel_a_side_a.x
           test -s build/export/wheels/wheel_a_side_b.x
@@ -110,16 +115,23 @@ jobs:
           cp meshes/trucks/bmw_x5.xml build/release/meshes/trucks/bmw_x5.xml
           cp meshes/wheels/*.xml build/release/meshes/wheels/
           cp classes/trucks/bmw_x5.xml build/release/classes/trucks/bmw_x5.xml
-          cp classes/wheels/*.xml build/release/classes/wheels/
+          cp classes/wheels/bmw_x5_end_a_side_a.xml build/release/classes/wheels/
+          cp classes/wheels/bmw_x5_end_a_side_b.xml build/release/classes/wheels/
+          cp classes/wheels/bmw_x5_end_b_side_a.xml build/release/classes/wheels/
+          cp classes/wheels/bmw_x5_end_b_side_b.xml build/release/classes/wheels/
           test -s build/release/classes/wheels/bmw_x5_end_a_side_a.xml
           test -s build/release/classes/wheels/bmw_x5_end_a_side_b.xml
           test -s build/release/classes/wheels/bmw_x5_end_b_side_a.xml
           test -s build/release/classes/wheels/bmw_x5_end_b_side_b.xml
+          test ! -e build/release/classes/wheels/bmw_x5_front.xml
+          test ! -e build/release/classes/wheels/bmw_x5_rear.xml
 
           echo "===== FINAL ZIP INPUT: classes/trucks/bmw_x5.xml ====="
           cat build/release/classes/trucks/bmw_x5.xml
-          echo "===== FINAL ZIP INPUT: classes/wheels/bmw_x5_end_a_side_a.xml ====="
-          cat build/release/classes/wheels/bmw_x5_end_a_side_a.xml
+          for wheel_xml in build/release/classes/wheels/bmw_x5_end_*.xml; do
+            echo "===== FINAL ZIP INPUT: ${wheel_xml#build/release/} ====="
+            cat "$wheel_xml"
+          done
 
           python3 - <<'PY'
           import re
@@ -129,7 +141,8 @@ jobs:
           forbidden = (
               "HardpointX", "HardpointDefaultY", "HardpointDefaultZ",
               "SuspensionMin", "SuspensionStrength", "SoftForceScale",
-              "RadiusOffset", "BodyFriction", "AttenEnd",
+              "SoftForceScale", "SubstanceFriction", "RadiusOffset",
+              "BodyFriction", "AttenEnd", "Color",
           )
           root = Path("build/release/classes")
           for path in root.rglob("*.xml"):
@@ -151,8 +164,31 @@ jobs:
               for w in truck.findall("./Wheels/Wheel")
           ]
           assert actual == expected, "Final class XML wheel coordinates mismatch: %r" % (actual,)
-          print("CLASS_XML_INPUT_VALIDATION_OK: 4 wheel positions; all unsupported attributes absent")
+          wheel_template = """<?xml version="1.0" encoding="UTF-8"?>
+          <TruckWheel Mesh="wheels/{name}" Radius="0.39" Width="0.28" Mass="35">
+            <WheelTracks _template="Default" />
+            <WheelSoftness _template="Default" />
+            <WheelFriction _template="Default" />
+          </TruckWheel>
+          """
+          for name, _, _ in expected:
+              wheel_name = name + ".xml"
+              actual_text = (root / "wheels" / wheel_name).read_text(encoding="utf-8").strip()
+              expected_text = wheel_template.format(name=name).strip()
+              assert actual_text == expected_text, "Unexpected clean MudRunner wheel XML: " + wheel_name
+          truck_text = (root / "trucks/bmw_x5.xml").read_text(encoding="utf-8")
+          assert 'CabinPos="(0.2; 1.35; 0.38)"' in truck_text
+          assert 'Pos="(2.25; 0.78; 0.0)"' in truck_text
+          assert 'SensationMin="(1.5; 0.4; -0.77)"' in truck_text
+          assert 'SensationMax="(2.4; 1.1; 0.77)"' in truck_text
+          print("CLASS_XML_INPUT_VALIDATION_OK: exact wheel positions, clean wheel schema, camera/headlight/damage")
           PY
+
+          # Required grep-based source check before ZIP packaging.
+          if grep -RniE '\\b(HardpointX|HardpointDefaultY|HardpointDefaultZ|SuspensionMin|SuspensionStrength|SoftForceScale|SubstanceFriction|RadiusOffset|BodyFriction|AttenEnd|Color)\\b' build/release --include='*.xml'; then
+            echo "Forbidden legacy/SnowRunner XML word found before ZIP packaging" >&2
+            exit 1
+          fi
 
           cp build/export/wheels/wheel_a_side_a.x build/release/meshes/wheels/bmw_x5_end_a_side_a.x
           cp build/export/wheels/wheel_a_side_b.x build/release/meshes/wheels/bmw_x5_end_a_side_b.x
