@@ -73,41 +73,73 @@ if not args.pivot_name:
             bm.free()
             raise RuntimeError("Body mesh has no faces: " + mesh_obj.name)
 
-        # First make adjacent face winding consistent. Then choose the
-        # outward orientation by comparing each face normal to the vector
-        # from the mesh vertex centroid to that face's center.
+        # First make adjacent face winding consistent. Then orient each
+        # disconnected surface component independently: imported GLB objects
+        # can contain multiple shells with separate winding.
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-        mesh_center = sum((v.co for v in bm.verts), Vector()) / float(len(bm.verts))
+        remaining = set(bm.faces)
+        mesh_positive = 0
+        mesh_negative = 0
+        checked_components = 0
 
-        def outward_ratio():
-            positive = 0
-            negative = 0
-            for face in bm.faces:
-                face_center = sum((v.co for v in face.verts), Vector()) / float(len(face.verts))
-                radial = face_center - mesh_center
-                dot = face.normal.dot(radial)
-                if dot > 1e-8:
-                    positive += 1
-                elif dot < -1e-8:
-                    negative += 1
-            total = positive + negative
-            return (float(positive) / total if total else 0.0), positive, negative
+        while remaining:
+            seed = remaining.pop()
+            component = [seed]
+            stack = [seed]
+            while stack:
+                current = stack.pop()
+                for edge in current.edges:
+                    for neighbor in edge.link_faces:
+                        if neighbor in remaining:
+                            remaining.remove(neighbor)
+                            component.append(neighbor)
+                            stack.append(neighbor)
 
-        ratio, positive, negative = outward_ratio()
-        if negative > positive:
-            bmesh.ops.reverse_faces(bm, faces=bm.faces)
-            bm.normal_update()
-            ratio, positive, negative = outward_ratio()
+            component_verts = set(v for face in component for v in face.verts)
+            component_center = sum(
+                (v.co for v in component_verts), Vector()
+            ) / float(len(component_verts))
 
-        # This is intentionally checked in the build, not left as a visual
-        # assumption. Near-tangent faces are ignored; inward-facing faces fail.
-        if ratio < 0.80:
+            def component_direction_counts():
+                positive = 0
+                negative = 0
+                for face in component:
+                    face_center = sum(
+                        (v.co for v in face.verts), Vector()
+                    ) / float(len(face.verts))
+                    dot = face.normal.dot(face_center - component_center)
+                    if dot > 1e-8:
+                        positive += 1
+                    elif dot < -1e-8:
+                        negative += 1
+                return positive, negative
+
+            positive, negative = component_direction_counts()
+            if negative > positive:
+                bmesh.ops.reverse_faces(bm, faces=component)
+                bm.normal_update()
+                positive, negative = component_direction_counts()
+
+            measurable = positive + negative
+            if measurable and negative > positive:
+                bm.free()
+                raise RuntimeError(
+                    "Inward-facing body component remains in %s: "
+                    "outward=%d inward=%d"
+                    % (mesh_obj.name, positive, negative)
+                )
+            mesh_positive += positive
+            mesh_negative += negative
+            checked_components += 1
+
+        bm.normal_update()
+        ratio = (
+            float(mesh_positive) / (mesh_positive + mesh_negative)
+            if mesh_positive + mesh_negative else 0.0
+        )
+        if mesh_positive + mesh_negative == 0:
             bm.free()
-            raise RuntimeError(
-                "Body normals are not predominantly outward for %s: "
-                "outward=%d inward=%d ratio=%.4f"
-                % (mesh_obj.name, positive, negative, ratio)
-            )
+            raise RuntimeError("No measurable outward body faces in " + mesh_obj.name)
         bm.to_mesh(mesh_obj.data)
         mesh_obj.data.update()
         bm.free()
