@@ -32,7 +32,7 @@ meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
 # interprets Y as vertical; dimensions are length, height, width in meters.
 if not args.pivot_name:
     # Build collision from the complete imported chassis geometry bounds.
-    body_points = [o.matrix_world @ Vector(corner) for o in meshes for corner in o.bound_box]
+    body_points = [o.matrix_world * Vector(corner) for o in meshes for corner in o.bound_box]
     if not body_points:
         raise RuntimeError("Cannot build CDT: chassis has no bounding-box points")
     margin = 0.02
@@ -51,7 +51,11 @@ if not args.pivot_name:
     cdt_mesh.update()
     cdt_obj = bpy.data.objects.new("cdt", cdt_mesh)
     bpy.context.scene.objects.link(cdt_obj)
+    cdt_obj.parent = None
+    cdt_obj.matrix_world.identity()
     meshes.append(cdt_obj)
+    if len(cdt_obj.data.vertices) != 8 or len(cdt_obj.data.polygons) != 6:
+        raise RuntimeError("CDT collision mesh was not created as an 8-vertex/6-face box")
     print("CDT_COLLISION_BOUNDS", (min_x,min_y,min_z), (max_x,max_y,max_z))
 if not meshes:
     raise RuntimeError("OBJ import produced no mesh objects")
