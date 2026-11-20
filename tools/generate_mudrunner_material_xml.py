@@ -29,7 +29,7 @@ SNOWRUNNER_ATTRIBUTES = (
     "SuspensionStrength",
 )
 GLASS_RE = re.compile(r"glass|window|windshield|windscreen", re.I)
-CHROME_RE = re.compile(r"chrome|chrom|metallic_trim|brightwork", re.I)
+CHROME_RE = re.compile(r"chrome|chrom|metal|metallic_trim|brightwork", re.I)
 PAINT_RE = re.compile(r"paint|body|car[_ -]?color|exterior", re.I)
 
 
