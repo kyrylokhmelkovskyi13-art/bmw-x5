@@ -283,7 +283,7 @@ jobs:
                   matrix_open = mesh_text.find("{", matrix_start)
                   matrix_close = mesh_text.find("}", matrix_open)
                   matrix_values = [float(v) for v in re.findall(
-                  number = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?"
+                      r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?",
                       mesh_text[matrix_open + 1:matrix_close]
                   )]
                   assert len(matrix_values) >= 16, "Missing root pivot matrix in " + mesh_path
