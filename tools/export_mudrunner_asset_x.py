@@ -95,6 +95,12 @@ if not args.pivot_name:
                             component.append(neighbor)
                             stack.append(neighbor)
 
+            # Tiny isolated fragments have no stable radial center;
+            # recalc_face_normals above still makes their winding consistent.
+            if len(component) < 4:
+                checked_components += 1
+                continue
+
             component_verts = set(v for face in component for v in face.verts)
             component_center = sum(
                 (v.co for v in component_verts), Vector()
