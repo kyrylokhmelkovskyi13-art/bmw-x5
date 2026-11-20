@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TruckWheel Radius="0.41" Width="0.27" Mass="45" Friction="1.2" Softness="0.35">
+  <WheelMesh Mesh="wheels/bmw_x5_end_b_side_b" />
+</TruckWheel>
