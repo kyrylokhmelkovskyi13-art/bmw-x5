@@ -1,16 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<_templates Include="trucks">
-  <Wheel>
-    <Rear ConnectedToHandbrake="true" HardpointOffsetY="-0.2" SuspensionMin="-0.4" SuspensionStrength="0.02" Torque="default" Type="bmw_x5_rear" />
-    <Front HardpointOffsetY="-0.2" SteeringAngle="40" SteeringCastor="8" SuspensionMin="-0.4" SuspensionStrength="0.025" Torque="full" Type="bmw_x5_front" />
-  </Wheel>
-</_templates>
 <Truck>
   <Wheels DefaultWheelType="bmw_x5_end_a_side_a">
-    <Wheel _template="Front" Type="bmw_x5_end_a_side_a" Pos="(1.694; -0.15; 0.842)" RightSide="false" Torque="full" />
-    <Wheel _template="Front" Type="bmw_x5_end_a_side_b" Pos="(1.694; -0.15; 0.842)" RightSide="true" Torque="full" />
-    <Wheel _template="Rear" Type="bmw_x5_end_b_side_a" Pos="(-1.573; -0.15; 0.842)" RightSide="false" Torque="full" />
-    <Wheel _template="Rear" Type="bmw_x5_end_b_side_b" Pos="(-1.573; -0.15; 0.842)" RightSide="true" Torque="full" />
+    <Wheel Type="bmw_x5_end_a_side_a" Pos="(1.694; -0.15; 0.842)" RightSide="false" Torque="full" />
+    <Wheel Type="bmw_x5_end_a_side_b" Pos="(1.694; -0.15; 0.842)" RightSide="true" Torque="full" />
+    <Wheel Type="bmw_x5_end_b_side_a" Pos="(-1.573; -0.15; 0.842)" RightSide="false" Torque="full" />
+    <Wheel Type="bmw_x5_end_b_side_b" Pos="(-1.573; -0.15; 0.842)" RightSide="true" Torque="full" />
   </Wheels>
   <TruckData BackSteerSpeed="0.01" EngineIconMesh="env/engine_default" EngineIconScale="1.3" EngineStartDelay="0.8" ExhaustStartTime="0.9" FuelCapacity="85" Responsiveness="0.05" SteerSpeed="0.02">
     <Sounds _template="Default" Origin="(3.2; 1.3; 0)" />
