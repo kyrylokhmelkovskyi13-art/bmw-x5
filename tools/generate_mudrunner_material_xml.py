@@ -28,7 +28,7 @@ SNOWRUNNER_ATTRIBUTES = (
     "HardpointDefaultY", "HardpointDefaultZ", "SuspensionMin",
     "SuspensionStrength",
 )
-GLASS_RE = re.compile(r"glass|window|windshield|windscreen", re.I)
+GLASS_RE = re.compile(r"glass|window|windshield|windscreen|headlight|headlamp|lamp|lens", re.I)
 CHROME_RE = re.compile(r"chrome|chrom|metal|metallic_trim|brightwork", re.I)
 PAINT_RE = re.compile(r"paint|body|car[_ -]?color|exterior", re.I)
 
@@ -91,14 +91,50 @@ def material_index(doc):
     return by_name
 
 
-def x_materials(path):
+def matching_brace(source, opening):
+    depth = 0
+    for pos in range(opening, len(source)):
+        if source[pos] == "{":
+            depth += 1
+        elif source[pos] == "}":
+            depth -= 1
+            if depth == 0:
+                return pos
+    raise RuntimeError("Unbalanced braces in DirectX .X file")
+
+
+def x_material_parts(path):
+    """Return (frame_name, part_index, material_name) from each direct mesh frame."""
     source = path.read_text(encoding="utf-8", errors="replace")
-    # X material identifiers are the tokens immediately before their opening brace.
-    found = re.findall(r"\bMaterial\s+([^\s{]+)\s*\{", source)
-    unique = list(dict.fromkeys(found))
-    if len(found) != len(unique):
-        print("X_DUPLICATE_MATERIAL_DECLARATIONS_COLLAPSED", path, len(found) - len(unique))
-    return unique
+    result = []
+    frame_matches = list(re.finditer(r"\\bFrame\\s+([^\\s{]+)\\s*\\{", source))
+    for frame_match in frame_matches:
+        opening = frame_match.end() - 1
+        closing = matching_brace(source, opening)
+        frame_body = source[opening + 1:closing]
+        nested = re.search(r"\\bFrame\\s+[^\\s{]+\\s*\\{", frame_body)
+        direct_body = frame_body[:nested.start()] if nested else frame_body
+        mesh_match = re.search(r"\\bMeshMaterialList\\s*\\{", direct_body)
+        if not mesh_match:
+            continue
+        list_open = direct_body.find("{", mesh_match.start())
+        list_close = matching_brace(direct_body, list_open)
+        material_block = direct_body[list_open + 1:list_close]
+        names = re.findall(r"\\bMaterial\\s+([^\\s{]+)\\s*\\{", material_block)
+        if not names:
+            continue
+        declared_count = re.match(r"\\s*(\\d+)\\s*;", material_block)
+        if declared_count and int(declared_count.group(1)) != len(names):
+            raise RuntimeError(
+                "%s: MeshMaterialList in frame %s declares %s materials but contains %s"
+                % (path, frame_match.group(1), declared_count.group(1), len(names))
+            )
+        for part_index, name in enumerate(names):
+            result.append((frame_match.group(1), part_index, name))
+    if not result:
+        raise RuntimeError("No frame/material assignments found in " + str(path))
+    print("X_MATERIAL_PARTS", path, len(result))
+    return result
 
 
 def resolve_material(name, by_name):
@@ -184,43 +220,49 @@ def strip_snowrunner_attributes(xml_text):
 
 
 def make_xml(x_path, xml_path, doc, binary, by_name):
-    names = x_materials(x_path)
-    if not names:
-        raise RuntimeError("No Material declarations found in " + str(x_path))
+    assignments = x_material_parts(x_path)
+    # One XML Material can target multiple mesh parts. This prevents each
+    # material from becoming a repeated default material in MudRunner Editor.
+    grouped = {}
+    for frame_name, part_index, x_name in assignments:
+        grouped.setdefault(x_name, []).append("%s %d" % (frame_name, part_index))
+
     rows = ['<?xml version="1.0" encoding="utf-8"?>', "<CombineXMesh>"]
-    emitted = set()
-    for x_name in names:
-        if x_name in emitted:
-            continue
+    for x_name, mesh_parts in grouped.items():
         material = resolve_material(x_name, by_name)
         diffuse, is_glass = make_diffuse(doc, binary, x_name, material)
         semantic_name = material.get("name") or x_name
         specular = make_specular(x_name, material, semantic_name)
         attrs = [
-            'Name="%s"' % escape(x_name, quote=True),
+            'MeshParts="%s"' % escape(", ".join(mesh_parts), quote=True),
             'DiffuseMap="%s"' % diffuse,
             'SpecularMap="%s"' % specular,
         ]
         if is_glass:
             attrs.append('Blending="alpha"')
         rows.append("  <Material " + " ".join(attrs) + " />")
-        emitted.add(x_name)
 
     rows.append("</CombineXMesh>")
-    xml_text = strip_snowrunner_attributes("\n".join(rows) + "\n")
+    xml_text = strip_snowrunner_attributes("\\n".join(rows) + "\\n")
     xml_path.parent.mkdir(parents=True, exist_ok=True)
     xml_path.write_text(xml_text, encoding="utf-8")
 
-    names_written = re.findall(r'<Material\s+Name="([^"]+)"', xml_text)
-    if len(names_written) != len(set(names_written)):
-        raise RuntimeError("Duplicate <Material Name> entries generated in " + str(xml_path))
+    meshparts = re.findall(r'<Material\\s+MeshParts="([^"]+)"', xml_text)
+    if len(meshparts) != len(grouped):
+        raise RuntimeError("Material MeshParts assignments missing or duplicated in " + str(xml_path))
+    covered = [part.strip() for value in meshparts for part in value.split(",")]
+    expected = ["%s %d" % (frame, index) for frame, index, _name in assignments]
+    if Counter(covered) != Counter(expected):
+        raise RuntimeError("MeshParts coverage mismatch in " + str(xml_path))
     for attr in SNOWRUNNER_ATTRIBUTES:
-        if re.search(r"\b" + re.escape(attr) + r"\s*=", xml_text):
+        if re.search(r"\\b" + re.escape(attr) + r"\\s*=", xml_text):
             raise RuntimeError("SnowRunner-only attribute survived XML generation: " + attr)
     for rel in re.findall(r'(?:DiffuseMap|SpecularMap)="([^"]+)"', xml_text):
         if Path(rel).name != rel or not (TEXTURES / rel).is_file():
             raise RuntimeError("XML references missing texture: " + rel)
-    print("GENERATED", xml_path, "materials=", len(names_written), "glass=", sum(bool(GLASS_RE.search(resolve_material(n, by_name).get("name") or n)) for n in names_written))
+    glass_count = sum(bool(GLASS_RE.search(resolve_material(name, by_name).get("name") or name))
+                      for name in grouped)
+    print("GENERATED", xml_path, "materials=", len(grouped), "meshparts=", len(covered), "glass=", glass_count)
 
 
 def main():
