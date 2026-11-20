@@ -56,7 +56,12 @@ jobs:
       - name: Download Blender 2.78c and MudRunner exporter
         run: |
           set -eux
-          curl -L --fail -o /tmp/blender278.tar.bz2 https://mirrors.ocf.berkeley.edu/blender/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
+          BLENDER278_URL=https://mirrors.ocf.berkeley.edu/blender/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
+          BLENDER278_FALLBACK=https://ftp.nluug.nl/pub/graphics/blender/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
+          if ! curl --retry 3 --retry-delay 2 -L --fail -A "Mozilla/5.0" -o /tmp/blender278.tar.bz2 "$BLENDER278_URL"; then
+            echo "Berkeley mirror failed; trying NLUUG mirror."
+            curl --retry 3 --retry-delay 2 -L --fail -A "Mozilla/5.0" -o /tmp/blender278.tar.bz2 "$BLENDER278_FALLBACK"
+          fi
           tar -xjf /tmp/blender278.tar.bz2 -C /tmp
           curl -L --fail -o /tmp/io_scene_mudrunner.zip https://github.com/fred-rum/io_scene_mudrunner/archive/refs/heads/master.zip
           unzip -q /tmp/io_scene_mudrunner.zip -d /tmp
