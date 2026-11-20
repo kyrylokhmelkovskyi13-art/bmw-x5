@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Truck>
+  <!-- Vehicle-space wheel hubs: keep these Pos values; mesh pivots are local zero. -->
   <Wheels DefaultWheelType="bmw_x5_end_a_side_a">
     <Wheel Type="bmw_x5_end_a_side_a" Pos="(1.694; -0.567; 0.842)" RightSide="false" Torque="full" />
     <Wheel Type="bmw_x5_end_a_side_b" Pos="(1.694; -0.567; -0.842)" RightSide="true" Torque="full" />
