@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<TruckWheel Mesh="wheels/bmw_x5_end_b_side_a" Radius="0.39" Width="0.26" Mass="75">
-  <WheelSoftness AverageDist="0.35" Stiffness="1" />
+<TruckWheel Mesh="wheels/bmw_x5_end_b_side_a" Radius="0.39" Width="0.28" Mass="35">
+  <WheelTracks _template="Default" />
+  <WheelSoftness _template="Default" />
+  <WheelFriction _template="Default" />
 </TruckWheel>
