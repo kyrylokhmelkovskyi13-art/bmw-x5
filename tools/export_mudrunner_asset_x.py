@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 p = argparse.ArgumentParser()
@@ -60,14 +60,71 @@ if not args.pivot_name:
 if not meshes:
     raise RuntimeError("OBJ import produced no mesh objects")
 if args.pivot_name:
-    points = [o.matrix_world * Vector(c) for o in meshes for c in o.bound_box]
-    center = sum(points, Vector()) / len(points)
+    # Wheel OBJ vertices arrive in vehicle/world coordinates. MudRunner expects
+    # the wheel pivot frame at the hub, with the exported mesh centered around
+    # that frame. Rebase every mesh vertex into pivot-local coordinates and put
+    # both the Blender object origin and the named export pivot at (0, 0, 0).
+    world_points = [
+        mesh.matrix_world * vertex.co
+        for mesh in meshes
+        for vertex in mesh.data.vertices
+    ]
+    if not world_points:
+        raise RuntimeError("Wheel export contains no mesh vertices")
+    min_v = Vector((
+        min(v.x for v in world_points),
+        min(v.y for v in world_points),
+        min(v.z for v in world_points),
+    ))
+    max_v = Vector((
+        max(v.x for v in world_points),
+        max(v.y for v in world_points),
+        max(v.z for v in world_points),
+    ))
+    center = (min_v + max_v) * 0.5
+
+    for mesh in meshes:
+        world_matrix = mesh.matrix_world.copy()
+        for vertex in mesh.data.vertices:
+            vertex.co = world_matrix * vertex.co - center
+        mesh.data.update()
+        mesh.matrix_world = Matrix.Identity(4)
+        mesh.location = (0.0, 0.0, 0.0)
+        mesh.rotation_euler = (0.0, 0.0, 0.0)
+        mesh.scale = (1.0, 1.0, 1.0)
+
     pivot = bpy.data.objects.new(args.pivot_name, None)
     bpy.context.scene.objects.link(pivot)
-    pivot.location = center
+    pivot.location = (0.0, 0.0, 0.0)
+    pivot.rotation_euler = (0.0, 0.0, 0.0)
+    pivot.scale = (1.0, 1.0, 1.0)
+    pivot.matrix_world = Matrix.Identity(4)
     for mesh in meshes:
         mesh.parent = pivot
-        mesh.matrix_parent_inverse = pivot.matrix_world.inverted()
+        mesh.matrix_parent_inverse = Matrix.Identity(4)
+
+    centered_points = [
+        mesh.matrix_world * vertex.co
+        for mesh in meshes
+        for vertex in mesh.data.vertices
+    ]
+    local_min = Vector((
+        min(v.x for v in centered_points),
+        min(v.y for v in centered_points),
+        min(v.z for v in centered_points),
+    ))
+    local_max = Vector((
+        max(v.x for v in centered_points),
+        max(v.y for v in centered_points),
+        max(v.z for v in centered_points),
+    ))
+    local_center = (local_min + local_max) * 0.5
+    if max(abs(v) for v in local_center) > 0.00001:
+        raise RuntimeError("Wheel geometry was not centered at pivot origin: %r" % (tuple(local_center),))
+    if max(abs(v) for v in pivot.location) > 0.000001:
+        raise RuntimeError("Wheel pivot origin is not (0, 0, 0)")
+    print("WHEEL_PIVOT_ORIGIN_ZERO_OK", args.pivot_name,
+          "source_center=", tuple(center), "local_bounds_center=", tuple(local_center))
 
 result = bpy.ops.export_scene.mudrunner(
     filepath=out_path, SelectedOnly=False, CoordinateSystem="LEFT_HANDED",
