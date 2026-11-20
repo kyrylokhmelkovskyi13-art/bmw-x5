@@ -165,7 +165,7 @@ jobs:
               for name in sorted(n for n in names if n.lower().endswith(".xml")):
                   content = z.read(name).decode("utf-8", "replace")
                   for attr in forbidden:
-                      assert not re.search(r"\\b" + re.escape(attr) + r"\\s*=", content), (
+                      assert not re.search(r"\b" + re.escape(attr) + r"\s*=", content), (
                           "Forbidden SnowRunner attribute %s remains in %s" % (attr, name)
                       )
 
