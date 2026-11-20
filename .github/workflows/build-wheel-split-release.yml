@@ -149,7 +149,7 @@ jobs:
               content = path.read_text(encoding="utf-8")
               ET.fromstring(content)
               for attr in forbidden:
-                  assert not re.search(r"\b" + re.escape(attr) + r"\s*=", content), (
+                  assert not re.search(r"\b" + re.escape(attr) + r"\b", content), (
                       "Unsupported attribute %s remains in %s" % (attr, path)
                   )
           truck = ET.parse(root / "trucks/bmw_x5.xml").getroot()
@@ -185,7 +185,7 @@ jobs:
           PY
 
           # Required grep-based source check before ZIP packaging.
-          if grep -RniE '\\b(HardpointX|HardpointDefaultY|HardpointDefaultZ|SuspensionMin|SuspensionStrength|SoftForceScale|SubstanceFriction|RadiusOffset|BodyFriction|AttenEnd|Color)\\b' build/release --include='*.xml'; then
+          if grep -RniE '\b(HardpointX|HardpointDefaultY|HardpointDefaultZ|SuspensionMin|SuspensionStrength|SoftForceScale|SubstanceFriction|RadiusOffset|BodyFriction|AttenEnd|Color)\b' build/release --include='*.xml'; then
             echo "Forbidden legacy/SnowRunner XML word found before ZIP packaging" >&2
             exit 1
           fi
@@ -262,7 +262,7 @@ jobs:
               for name in sorted(n for n in names if n.lower().endswith(".xml")):
                   content = z.read(name).decode("utf-8", "replace")
                   for word in forbidden:
-                      assert not re.search(r"\\b" + re.escape(word) + r"\\b", content), (
+                      assert not re.search(r"\b" + re.escape(word) + r"\b", content), (
                           "Forbidden legacy/SnowRunner XML word %s remains in %s" % (word, name)
                       )
 
@@ -349,7 +349,7 @@ jobs:
 
           mkdir -p build/zip_verify
           unzip -q BMW_X5_MudRunner_Wheel_Split.zip -d build/zip_verify
-          if grep -RniE '\\b(HardpointX|HardpointDefaultY|HardpointDefaultZ|SuspensionMin|SuspensionStrength|SoftForceScale|SubstanceFriction|RadiusOffset|BodyFriction|AttenEnd|Color)\\b' build/zip_verify --include='*.xml'; then
+          if grep -RniE '\b(HardpointX|HardpointDefaultY|HardpointDefaultZ|SuspensionMin|SuspensionStrength|SoftForceScale|SubstanceFriction|RadiusOffset|BodyFriction|AttenEnd|Color)\b' build/zip_verify --include='*.xml'; then
             echo "Forbidden legacy/SnowRunner XML word found inside final ZIP" >&2
             exit 1
           fi
