@@ -26,7 +26,7 @@ jobs:
           set -eux
           sudo apt-get update
           sudo apt-get install -y libglu1-mesa libgl1
-          curl -L --fail -o /tmp/blender278.tar.bz2 https://download.blender.org/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
+          curl -L --fail -o /tmp/blender278.tar.bz2 https://mirrors.ocf.berkeley.edu/blender/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
           tar -xjf /tmp/blender278.tar.bz2 -C /tmp
           curl -L --fail -o /tmp/io_scene_mudrunner.zip https://github.com/fred-rum/io_scene_mudrunner/archive/refs/heads/master.zip
           unzip -q /tmp/io_scene_mudrunner.zip -d /tmp

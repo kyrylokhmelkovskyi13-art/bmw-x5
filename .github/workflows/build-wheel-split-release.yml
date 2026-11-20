@@ -25,7 +25,7 @@ jobs:
           set -eux
           BLENDER_VERSION=4.2.0
           ARCHIVE=/tmp/blender-4.2.0-linux-x64.tar.xz
-          URL=https://download.blender.org/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz
+          URL=https://mirrors.ocf.berkeley.edu/blender/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz
           MIRROR=https://mirrors.ocf.berkeley.edu/blender/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz
           if ! curl --retry 3 --retry-delay 2 -L --fail -A "Mozilla/5.0" -o "$ARCHIVE" "$URL"; then
             echo "Primary Blender download failed; trying Berkeley mirror."
@@ -56,7 +56,7 @@ jobs:
       - name: Download Blender 2.78c and MudRunner exporter
         run: |
           set -eux
-          curl -L --fail -o /tmp/blender278.tar.bz2 https://download.blender.org/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
+          curl -L --fail -o /tmp/blender278.tar.bz2 https://mirrors.ocf.berkeley.edu/blender/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
           tar -xjf /tmp/blender278.tar.bz2 -C /tmp
           curl -L --fail -o /tmp/io_scene_mudrunner.zip https://github.com/fred-rum/io_scene_mudrunner/archive/refs/heads/master.zip
           unzip -q /tmp/io_scene_mudrunner.zip -d /tmp
