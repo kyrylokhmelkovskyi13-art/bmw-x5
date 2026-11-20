@@ -51,7 +51,7 @@ def read_glb(path):
             raise RuntimeError("Truncated GLB chunk")
         offset += length
         if kind == 0x4E4F534A:
-            doc = json.loads(chunk.rstrip(b" \\t\\r\\n\\0").decode("utf-8"))
+            doc = json.loads(chunk.rstrip(b" \t\r\n\0").decode("utf-8"))
         elif kind == 0x004E4942:
             binary = chunk
     if doc is None:
@@ -93,7 +93,7 @@ def material_index(doc):
 def x_materials(path):
     source = path.read_text(encoding="utf-8", errors="replace")
     # X material identifiers are the tokens immediately before their opening brace.
-    found = re.findall(r"\\bMaterial\\s+([^\\s{]+)\\s*\\{", source)
+    found = re.findall(r"\bMaterial\s+([^\s{]+)\s*\{", source)
     unique = list(dict.fromkeys(found))
     if len(found) != len(unique):
         print("X_DUPLICATE_MATERIAL_DECLARATIONS_COLLAPSED", path, len(found) - len(unique))
@@ -104,7 +104,7 @@ def resolve_material(name, by_name):
     if name in by_name:
         return by_name[name][1]
     # Blender/OBJ importers append .001, .002, ... to duplicate datablock names.
-    base = re.sub(r"\\.\\d{3,}$", "", name)
+    base = re.sub(r"\.\d{3,}$", "", name)
     if base in by_name:
         return by_name[base][1]
     raise RuntimeError("MaterialName not found in GLB: " + name)
@@ -174,7 +174,7 @@ def make_specular(name, material):
 
 def strip_snowrunner_attributes(xml_text):
     for attr in SNOWRUNNER_ATTRIBUTES:
-        xml_text = re.sub(r"\\s+" + re.escape(attr) + r'\\s*=\\s*"[^"]*"', "", xml_text)
+        xml_text = re.sub(r"\s+" + re.escape(attr) + r'\s*=\s*"[^"]*"', "", xml_text)
     return xml_text
 
 
@@ -201,15 +201,15 @@ def make_xml(x_path, xml_path, doc, binary, by_name):
         emitted.add(x_name)
 
     rows.append("</CombineXMesh>")
-    xml_text = strip_snowrunner_attributes("\\n".join(rows) + "\\n")
+    xml_text = strip_snowrunner_attributes("\n".join(rows) + "\n")
     xml_path.parent.mkdir(parents=True, exist_ok=True)
     xml_path.write_text(xml_text, encoding="utf-8")
 
-    names_written = re.findall(r'<Material\\s+Name="([^"]+)"', xml_text)
+    names_written = re.findall(r'<Material\s+Name="([^"]+)"', xml_text)
     if len(names_written) != len(set(names_written)):
         raise RuntimeError("Duplicate <Material Name> entries generated in " + str(xml_path))
     for attr in SNOWRUNNER_ATTRIBUTES:
-        if re.search(r"\\b" + re.escape(attr) + r"\\s*=", xml_text):
+        if re.search(r"\b" + re.escape(attr) + r"\s*=", xml_text):
             raise RuntimeError("SnowRunner-only attribute survived XML generation: " + attr)
     for rel in re.findall(r'(?:DiffuseMap|SpecularMap)="([^"]+)"', xml_text):
         if Path(rel).name != rel or not (TEXTURES / rel).is_file():
