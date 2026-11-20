@@ -24,14 +24,17 @@ jobs:
         run: |
           set -eux
           BLENDER_VERSION=4.2.0
-          curl --retry 3 --retry-delay 2 -L --fail \
-            -o /tmp/blender-4.2.0-linux-x64.tar.xz \
-            https://download.blender.org/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz
-          tar -xJf /tmp/blender-4.2.0-linux-x64.tar.xz -C /tmp
+          ARCHIVE=/tmp/blender-4.2.0-linux-x64.tar.xz
+          URL=https://download.blender.org/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz
+          MIRROR=https://mirrors.ocf.berkeley.edu/blender/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz
+          if ! curl --retry 3 --retry-delay 2 -L --fail -A "Mozilla/5.0" -o "$ARCHIVE" "$URL"; then
+            echo "Primary Blender download failed; trying Berkeley mirror."
+            curl --retry 3 --retry-delay 2 -L --fail -A "Mozilla/5.0" -o "$ARCHIVE" "$MIRROR"
+          fi
+          tar -xJf "$ARCHIVE" -C /tmp
           echo "/tmp/blender-${BLENDER_VERSION}-linux-x64" >> "$GITHUB_PATH"
           /tmp/blender-${BLENDER_VERSION}-linux-x64/blender --version
           /tmp/blender-${BLENDER_VERSION}-linux-x64/blender --background --python-expr "import numpy; print('NUMPY_OK', numpy.__version__)"
-
       - name: Split Object_97 into four rims and pair with tires
         run: |
           set -euxo pipefail
