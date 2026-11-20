@@ -1,0 +1,105 @@
+name: Build BMW X5 wheel axis test variants
+
+on:
+  push:
+    paths:
+      - "tools/create_wheel_axis_variants.py"
+      - ".github/workflows/build-wheel-axis-variants.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  variants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglu1-mesa libgl1 python3-pil
+
+      - name: Download Blender 4.2 and split source geometry
+        run: |
+          set -euxo pipefail
+          curl --retry 3 -L --fail -o /tmp/blender.tar.xz https://mirrors.ocf.berkeley.edu/blender/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz
+          tar -xJf /tmp/blender.tar.xz -C /tmp
+          /tmp/blender-4.2.0-linux-x64/blender --background --python tools/split_bmw_x5_wheels.py -- --source bmw-x5.glb --out build/split
+          test -s build/split/bmw_x5_body.obj
+          for f in wheel_a_side_a wheel_a_side_b wheel_b_side_a wheel_b_side_b; do test -s "build/split/$f.obj"; done
+
+      - name: Download legacy MudRunner exporter
+        run: |
+          set -eux
+          sudo apt-get install -y libglu1-mesa libgl1
+          curl --retry 3 -L --fail -o /tmp/blender278.tar.bz2 https://mirrors.ocf.berkeley.edu/blender/release/Blender2.78/blender-2.78c-linux-glibc219-x86_64.tar.bz2
+          tar -xjf /tmp/blender278.tar.bz2 -C /tmp
+          curl -L --fail -o /tmp/io_scene_mudrunner.zip https://github.com/fred-rum/io_scene_mudrunner/archive/refs/heads/master.zip
+          unzip -q /tmp/io_scene_mudrunner.zip -d /tmp
+          mv /tmp/io_scene_mudrunner-master /tmp/io_scene_mudrunner
+
+      - name: Export body with CDT collision
+        run: |
+          set -euxo pipefail
+          mkdir -p build/output
+          /tmp/blender-2.78c-linux-glibc219-x86_64/blender --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/bmw_x5_body.obj --addon-dir /tmp/io_scene_mudrunner --out build/output/bmw_x5.x 2>&1 | tee build/output/body.log
+          grep -q "CDT_COLLISION_BOUNDS" build/output/body.log
+          grep -q "BODY_NORMALS_OUTWARD_VALIDATION_OK" build/output/body.log
+          test -s build/output/bmw_x5.x
+
+      - name: Build plus and minus 90 degree wheel variants
+        run: |
+          set -euxo pipefail
+          BLENDER=/tmp/blender-2.78c-linux-glibc219-x86_64/blender
+          ADDON=/tmp/io_scene_mudrunner
+          for angle in plus90 minus90; do
+            if [ "$angle" = "plus90" ]; then degrees=90; else degrees=-90; fi
+            mkdir -p "build/output/$angle"
+            for wheel in wheel_a_side_a wheel_a_side_b wheel_b_side_a wheel_b_side_b; do
+              python3 tools/create_wheel_axis_variants.py --input "build/split/$wheel.obj" --output "build/output/$angle/$wheel.obj" --degrees "$degrees"
+              case "$wheel" in
+                wheel_a_side_a) pivot=wheel_pivot_end_a_side_a ;;
+                wheel_a_side_b) pivot=wheel_pivot_end_a_side_b ;;
+                wheel_b_side_a) pivot=wheel_pivot_end_b_side_a ;;
+                wheel_b_side_b) pivot=wheel_pivot_end_b_side_b ;;
+              esac
+              "$BLENDER" --background --python tools/export_mudrunner_asset_x.py -- --obj "build/output/$angle/$wheel.obj" --addon-dir "$ADDON" --out "build/output/$angle/$wheel.x" --pivot-name "$pivot" > "build/output/$angle/$wheel.log" 2>&1
+              grep -q "WHEEL_PIVOT_ORIGIN_ZERO_OK" "build/output/$angle/$wheel.log"
+              grep -q "Frame $pivot" "build/output/$angle/$wheel.x"
+              test -s "build/output/$angle/$wheel.x"
+            done
+          done
+
+      - name: Package test variants
+        run: |
+          set -euxo pipefail
+          mkdir -p build/package/common/meshes/trucks build/package/common/classes/trucks build/package/common/classes/wheels build/package/common/meshes/wheels
+          cp build/output/bmw_x5.x build/package/common/meshes/trucks/
+          cp classes/trucks/bmw_x5.xml build/package/common/classes/trucks/
+          cp classes/wheels/*.xml build/package/common/classes/wheels/
+          cp meshes/trucks/bmw_x5.xml build/package/common/meshes/trucks/
+          cp meshes/wheels/*.xml build/package/common/meshes/wheels/
+          for angle in plus90 minus90; do
+            mkdir -p "build/package/$angle/meshes/wheels"
+            cp build/output/$angle/*.x "build/package/$angle/meshes/wheels/"
+            cp -a build/package/common/. "build/package/$angle/"
+            (cd "build/package/$angle" && zip -qr "../../BMW_X5_$angle.zip" .)
+          done
+          cp build/output/body.log build/package/
+          cp build/output/plus90/*.log build/package/
+          cp build/output/minus90/*.log build/package/
+          cp build/split/SPLIT_REPORT.txt build/package/ || true
+
+      - name: Upload both test variants
+        uses: actions/upload-artifact@v4
+        with:
+          name: BMW-X5-wheel-axis-plus90-minus90
+          path: |
+            BMW_X5_plus90.zip
+            BMW_X5_minus90.zip
+            build/package/*.log
+            build/package/SPLIT_REPORT.txt
+          if-no-files-found: error
+          retention-days: 14
