@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generate deduplicated MudRunner CombineXMesh material XML and TGA maps from GLB."""
+import hashlib
 import io
 import json
 import re
@@ -73,7 +74,7 @@ def image_bytes(doc, binary, image):
 def safe_stem(value):
     stem = re.sub(r"[^A-Za-z0-9_.-]", "_", value).strip("._")
     stem = re.sub(r"_+", "_", stem)
-    return stem or "material"
+    return (stem or "material") + "_" + hashlib.sha1(value.encode("utf-8")).hexdigest()[:8]
 
 
 def material_index(doc):
@@ -133,10 +134,13 @@ def make_diffuse(doc, binary, name, material):
         rgba = tuple(round(v * 255) for v in factor)
         image = Image.new("RGBA", (32, 32), rgba)
     else:
-        tint = Image.new("RGBA", image.size, tuple(round(v * 255) for v in factor))
-        image = ImageChops.multiply(image, tint)
+        rgb = Image.merge("RGB", image.split()[:3])
+        tint = Image.new("RGB", image.size, tuple(round(v * 255) for v in factor[:3]))
+        rgb = ImageChops.multiply(rgb, tint)
+        image = Image.merge("RGBA", (*rgb.split(), image.getchannel("A")) )
 
-    is_glass = bool(GLASS_RE.search(name))
+    semantic_name = material.get("name") or name
+    is_glass = bool(GLASS_RE.search(semantic_name))
     if is_glass:
         # A true 32-bit TGA with constant 40% opacity for MudRunner alpha blending.
         image.putalpha(Image.new("L", image.size, 102))
@@ -154,15 +158,16 @@ def make_diffuse(doc, binary, name, material):
     return filename, is_glass
 
 
-def make_specular(name, material):
+def make_specular(name, material, semantic_name=None):
+    semantic_name = semantic_name or name
     pbr = material.get("pbrMetallicRoughness", {})
-    metallic = float(pbr.get("metallicFactor", 1.0 if CHROME_RE.search(name) else 0.0))
-    roughness = float(pbr.get("roughnessFactor", 0.25 if (CHROME_RE.search(name) or PAINT_RE.search(name)) else 0.7))
-    if GLASS_RE.search(name):
+    metallic = float(pbr.get("metallicFactor", 1.0 if CHROME_RE.search(semantic_name) else 0.0))
+    roughness = float(pbr.get("roughnessFactor", 0.25 if (CHROME_RE.search(semantic_name) or PAINT_RE.search(semantic_name)) else 0.7))
+    if GLASS_RE.search(semantic_name):
         level = 220
-    elif CHROME_RE.search(name):
+    elif CHROME_RE.search(semantic_name):
         level = 248
-    elif PAINT_RE.search(name):
+    elif PAINT_RE.search(semantic_name):
         level = 220
     else:
         level = round(80 + 150 * max(0.0, min(1.0, metallic)) * (1.0 - 0.35 * max(0.0, min(1.0, roughness))))
@@ -189,7 +194,8 @@ def make_xml(x_path, xml_path, doc, binary, by_name):
             continue
         material = resolve_material(x_name, by_name)
         diffuse, is_glass = make_diffuse(doc, binary, x_name, material)
-        specular = make_specular(x_name, material)
+        semantic_name = material.get("name") or x_name
+        specular = make_specular(x_name, material, semantic_name)
         attrs = [
             'Name="%s"' % escape(x_name, quote=True),
             'DiffuseMap="%s"' % diffuse,
@@ -214,7 +220,7 @@ def make_xml(x_path, xml_path, doc, binary, by_name):
     for rel in re.findall(r'(?:DiffuseMap|SpecularMap)="([^"]+)"', xml_text):
         if Path(rel).name != rel or not (TEXTURES / rel).is_file():
             raise RuntimeError("XML references missing texture: " + rel)
-    print("GENERATED", xml_path, "materials=", len(names_written), "glass=", sum(bool(GLASS_RE.search(n)) for n in names_written))
+    print("GENERATED", xml_path, "materials=", len(names_written), "glass=", sum(bool(GLASS_RE.search(resolve_material(n, by_name).get("name") or n)) for n in names_written))
 
 
 def main():
