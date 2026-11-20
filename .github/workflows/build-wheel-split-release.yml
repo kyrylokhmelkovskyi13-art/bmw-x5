@@ -73,6 +73,7 @@ jobs:
           BLENDER=/tmp/blender-2.78c-linux-glibc219-x86_64/blender
           ADDON=/tmp/io_scene_mudrunner
           mkdir -p build/export/wheels
+          mkdir -p build/export/wheels
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/bmw_x5_body.obj --addon-dir "$ADDON" --out build/export/bmw_x5.x
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_a.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_a.x --pivot-name wheel_pivot_end_a_side_a 2>&1 | tee build/export/wheels/wheel_a_side_a.log
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_b.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_b.x --pivot-name wheel_pivot_end_a_side_b 2>&1 | tee build/export/wheels/wheel_a_side_b.log
@@ -277,9 +278,61 @@ jobs:
                   assert mesh_path in names, "Missing wheel mesh " + mesh_path
                   mesh_text = z.read(mesh_path).decode("latin-1", "replace")
                   pivot_name = "wheel_pivot_" + wheel_name.replace("bmw_x5_", "")
-                  assert "Frame " + pivot_name in mesh_text, (
-                      "Wheel .X missing zero-origin pivot frame: " + mesh_path
+                  frame_start = mesh_text.find("Frame " + pivot_name)
+                  assert frame_start >= 0, "Wheel .X missing zero-origin pivot frame: " + mesh_path
+                  matrix_start = mesh_text.find("FrameTransformMatrix {", frame_start)
+                  matrix_open = mesh_text.find("{", matrix_start)
+                  matrix_close = mesh_text.find("}", matrix_open)
+                  matrix_values = [float(v) for v in re.findall(
+                      r"[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[Ee][-+]?\\d+)?",
+                      mesh_text[matrix_open + 1:matrix_close]
+                  )]
+                  assert len(matrix_values) >= 16, "Missing root pivot matrix in " + mesh_path
+                  assert max(abs(v) for v in matrix_values[12:15]) <= 0.00001, (
+                      "Exported .X pivot translation is not zero in " + mesh_path
                   )
+
+                  # Parse the actual DirectX Mesh vertex lists and ensure their
+                  # combined local-space bounds are centered on the zero pivot.
+                  mesh_vertices = []
+                  number = r"[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[Ee][-+]?\\d+)?"
+                  mesh_pattern = re.compile(r"\\bMesh\\s*\\{")
+                  for mesh_match in mesh_pattern.finditer(mesh_text):
+                      brace = mesh_text.find("{", mesh_match.start())
+                      depth = 0
+                      close = None
+                      for pos in range(brace, len(mesh_text)):
+                          if mesh_text[pos] == "{":
+                              depth += 1
+                          elif mesh_text[pos] == "}":
+                              depth -= 1
+                              if depth == 0:
+                                  close = pos
+                                  break
+                      assert close is not None, "Unclosed Mesh block in " + mesh_path
+                      body = mesh_text[brace + 1:close]
+                      count_match = re.match(r"\\s*(\\d+)\\s*;", body)
+                      if not count_match:
+                          continue
+                      vertex_count = int(count_match.group(1))
+                      vertex_data = body[count_match.end():]
+                      triples = re.findall(
+                          r"(" + number + r")\\s*;\\s*(" + number + r")\\s*;\\s*(" + number + r")\\s*;\\s*,?",
+                          vertex_data
+                      )[:vertex_count]
+                      assert len(triples) == vertex_count, (
+                          "Could not read all exported mesh vertices in " + mesh_path
+                      )
+                      mesh_vertices.extend(tuple(float(v) for v in triple) for triple in triples)
+                  assert mesh_vertices, "No exported vertices found in " + mesh_path
+                  mins = [min(v[i] for v in mesh_vertices) for i in range(3)]
+                  maxs = [max(v[i] for v in mesh_vertices) for i in range(3)]
+                  bounds_center = [(mins[i] + maxs[i]) * 0.5 for i in range(3)]
+                  assert max(abs(v) for v in bounds_center) <= 0.0001, (
+                      "Exported wheel mesh geometry is not centered at (0,0,0): %s %r"
+                      % (mesh_path, bounds_center)
+                  )
+                  print("ZIP_WHEEL_ORIGIN_ZERO_OK", mesh_path, bounds_center)
 
               material_xmls = [
                   "meshes/trucks/bmw_x5.xml",
