@@ -73,7 +73,8 @@ jobs:
           BLENDER=/tmp/blender-2.78c-linux-glibc219-x86_64/blender
           ADDON=/tmp/io_scene_mudrunner
           mkdir -p build/export/wheels
-          $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/bmw_x5_body.obj --addon-dir "$ADDON" --out build/export/bmw_x5.x
+          $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/bmw_x5_body.obj --addon-dir "$ADDON" --out build/export/bmw_x5.x 2>&1 | tee build/export/body.log
+          grep -q "BODY_NORMALS_OUTWARD_VALIDATION_OK" build/export/body.log
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_a.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_a.x --pivot-name wheel_pivot_end_a_side_a 2>&1 | tee build/export/wheels/wheel_a_side_a.log
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_b.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_b.x --pivot-name wheel_pivot_end_a_side_b 2>&1 | tee build/export/wheels/wheel_a_side_b.log
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_b_side_a.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_b_side_a.x --pivot-name wheel_pivot_end_b_side_a 2>&1 | tee build/export/wheels/wheel_b_side_a.log
