@@ -186,7 +186,7 @@ jobs:
           PY
 
           # Required grep-based source check before ZIP packaging.
-          if grep -RniE '\b(HardpointX|HardpointDefaultY|HardpointDefaultZ|SuspensionMin|SuspensionStrength|SoftForceScale|SubstanceFriction|RadiusOffset|BodyFriction|AttenEnd|Color)\b' build/release --include='*.xml'; then
+          if grep -RnE '\b(HardpointX|HardpointDefaultY|HardpointDefaultZ|SuspensionMin|SuspensionStrength|SoftForceScale|SubstanceFriction|RadiusOffset|BodyFriction|AttenEnd|Color)\b' build/release --include='*.xml'; then
             echo "Forbidden legacy/SnowRunner XML word found before ZIP packaging" >&2
             exit 1
           fi
@@ -402,7 +402,7 @@ jobs:
 
           mkdir -p build/zip_verify
           unzip -q BMW_X5_MudRunner_Wheel_Split.zip -d build/zip_verify
-          if grep -RniE '\b(HardpointX|HardpointDefaultY|HardpointDefaultZ|SuspensionMin|SuspensionStrength|SoftForceScale|SubstanceFriction|RadiusOffset|BodyFriction|AttenEnd|Color)\b' build/zip_verify --include='*.xml'; then
+          if grep -RnE '\b(HardpointX|HardpointDefaultY|HardpointDefaultZ|SuspensionMin|SuspensionStrength|SoftForceScale|SubstanceFriction|RadiusOffset|BodyFriction|AttenEnd|Color)\b' build/zip_verify --include='*.xml'; then
             echo "Forbidden legacy/SnowRunner XML word found inside final ZIP" >&2
             exit 1
           fi
