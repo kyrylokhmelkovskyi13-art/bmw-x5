@@ -123,6 +123,92 @@ jobs:
           zip -qr ../../BMW_X5_MudRunner_Wheel_Split.zip .
           test -s ../../BMW_X5_MudRunner_Wheel_Split.zip
 
+      - name: Verify final ZIP wheel coordinates and material assignments
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          import re
+          import zipfile
+          import xml.etree.ElementTree as ET
+          from pathlib import PurePosixPath
+          from PIL import Image
+
+          archive = "BMW_X5_MudRunner_Wheel_Split.zip"
+          expected = [
+              ("bmw_x5_end_a_side_a", "(1.694; -0.567; 0.842)", "false"),
+              ("bmw_x5_end_a_side_b", "(1.694; -0.567; -0.842)", "true"),
+              ("bmw_x5_end_b_side_a", "(-1.573; -0.567; 0.842)", "false"),
+              ("bmw_x5_end_b_side_b", "(-1.573; -0.567; -0.842)", "true"),
+          ]
+          forbidden = (
+              "HardpointX", "HardpointDefaultY", "HardpointDefaultZ",
+              "SuspensionMin", "SuspensionStrength", "SoftForceScale",
+              "RadiusOffset", "BodyFriction",
+          )
+          with zipfile.ZipFile(archive) as z:
+              names = set(z.namelist())
+              class_path = "classes/trucks/bmw_x5.xml"
+              assert class_path in names, "Final ZIP is missing " + class_path
+              class_bytes = z.read(class_path)
+              root = ET.fromstring(class_bytes)
+              wheels_node = root.find("Wheels")
+              assert wheels_node is not None, "Truck XML has no /Truck/Wheels"
+              wheels = wheels_node.findall("Wheel")
+              assert len(wheels) == 4, "Expected exactly 4 Wheel elements, got %d" % len(wheels)
+              actual = []
+              for wheel in wheels:
+                  row = (wheel.attrib.get("Type"), wheel.attrib.get("Pos"), wheel.attrib.get("RightSide"))
+                  actual.append(row)
+                  print('<Wheel Type="%s" Pos="%s" RightSide="%s" />' % row)
+              assert actual == expected, "Wheel coordinates/order mismatch: %r" % (actual,)
+
+              for name in sorted(n for n in names if n.lower().endswith(".xml")):
+                  content = z.read(name).decode("utf-8", "replace")
+                  for attr in forbidden:
+                      assert not re.search(r"\\b" + re.escape(attr) + r"\\s*=", content), (
+                          "Forbidden SnowRunner attribute %s remains in %s" % (attr, name)
+                      )
+
+              material_xmls = [
+                  "meshes/trucks/bmw_x5.xml",
+                  "meshes/wheels/bmw_x5_end_a_side_a.xml",
+                  "meshes/wheels/bmw_x5_end_a_side_b.xml",
+                  "meshes/wheels/bmw_x5_end_b_side_a.xml",
+                  "meshes/wheels/bmw_x5_end_b_side_b.xml",
+              ]
+              alpha_maps = []
+              for xml_name in material_xmls:
+                  assert xml_name in names, "Missing material XML " + xml_name
+                  mesh_root = ET.fromstring(z.read(xml_name))
+                  mats = mesh_root.findall("Material")
+                  assert mats, "No material entries in " + xml_name
+                  for material in mats:
+                      assert material.attrib.get("MeshParts"), (
+                          "Material lacks explicit MeshParts in %s: %r" % (xml_name, material.attrib)
+                      )
+                      assert "Name" not in material.attrib, (
+                          "Legacy/default Name material mapping remains in " + xml_name
+                      )
+                      diffuse = material.attrib.get("DiffuseMap")
+                      specular = material.attrib.get("SpecularMap")
+                      assert diffuse and specular, "Missing diffuse/specular map in " + xml_name
+                      for texture in (diffuse, specular):
+                          texture_path = "textures/" + PurePosixPath(texture).name
+                          assert texture_path in names, "Missing texture " + texture_path
+                      if material.attrib.get("Blending") == "alpha":
+                          alpha_maps.append(diffuse)
+
+              assert alpha_maps, "No alpha-blended glass/headlight materials found"
+              for texture in alpha_maps:
+                  with Image.open(__import__("io").BytesIO(z.read("textures/" + PurePosixPath(texture).name))) as image:
+                      image.load()
+                      assert image.mode == "RGBA", "%s is not 32-bit RGBA" % texture
+                      alpha = image.getchannel("A")
+                      lo, hi = alpha.getextrema()
+                      assert 90 <= lo <= hi <= 110, "%s alpha range %s is outside 90-110" % (texture, (lo, hi))
+              print("ZIP_FINAL_VALIDATION_OK wheels=4 alpha_textures=%d" % len(alpha_maps))
+          PY
+
       - uses: actions/upload-artifact@v4
         with:
           name: BMW_X5_MudRunner_Wheel_Split
