@@ -244,12 +244,12 @@ jobs:
               assert actual == expected, "Wheel coordinates/order mismatch: %r" % (actual,)
 
               expected_wheel_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<TruckWheel Mesh="wheels/{name}" Radius="0.39" Width="0.28" Mass="35">
-  <WheelTracks _template="Default" />
-  <WheelSoftness _template="Default" />
-  <WheelFriction _template="Default" />
-</TruckWheel>
-"""
+          <TruckWheel Mesh="wheels/{name}" Radius="0.39" Width="0.28" Mass="35">
+            <WheelTracks _template="Default" />
+            <WheelSoftness _template="Default" />
+            <WheelFriction _template="Default" />
+          </TruckWheel>
+          """
               for wheel_name in wheel_class_names:
                   wheel_path = "classes/wheels/" + wheel_name + ".xml"
                   assert wheel_path in names, "Missing wheel class XML " + wheel_path
