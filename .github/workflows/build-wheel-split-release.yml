@@ -141,7 +141,7 @@ jobs:
           forbidden = (
               "HardpointX", "HardpointDefaultY", "HardpointDefaultZ",
               "SuspensionMin", "SuspensionStrength", "SoftForceScale",
-              "SoftForceScale", "SubstanceFriction", "RadiusOffset",
+              "SubstanceFriction", "RadiusOffset",
               "BodyFriction", "AttenEnd", "Color",
           )
           root = Path("build/release/classes")
@@ -218,8 +218,13 @@ jobs:
           forbidden = (
               "HardpointX", "HardpointDefaultY", "HardpointDefaultZ",
               "SuspensionMin", "SuspensionStrength", "SoftForceScale",
-              "RadiusOffset", "BodyFriction", "AttenEnd",
+              "SubstanceFriction", "RadiusOffset", "BodyFriction",
+              "AttenEnd", "Color",
           )
+          wheel_class_names = [
+              "bmw_x5_end_a_side_a", "bmw_x5_end_a_side_b",
+              "bmw_x5_end_b_side_a", "bmw_x5_end_b_side_b",
+          ]
           with zipfile.ZipFile(archive) as z:
               names = set(z.namelist())
               class_path = "classes/trucks/bmw_x5.xml"
@@ -237,12 +242,43 @@ jobs:
                   print('<Wheel Type="%s" Pos="%s" RightSide="%s" />' % row)
               assert actual == expected, "Wheel coordinates/order mismatch: %r" % (actual,)
 
+              expected_wheel_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<TruckWheel Mesh="wheels/{name}" Radius="0.39" Width="0.28" Mass="35">
+  <WheelTracks _template="Default" />
+  <WheelSoftness _template="Default" />
+  <WheelFriction _template="Default" />
+</TruckWheel>
+"""
+              for wheel_name in wheel_class_names:
+                  wheel_path = "classes/wheels/" + wheel_name + ".xml"
+                  assert wheel_path in names, "Missing wheel class XML " + wheel_path
+                  actual_xml = z.read(wheel_path).decode("utf-8").strip()
+                  assert actual_xml == expected_wheel_xml.format(name=wheel_name).strip(), (
+                      "Wheel class XML differs from requested MudRunner schema: " + wheel_path
+                  )
+              assert "classes/wheels/bmw_x5_front.xml" not in names
+              assert "classes/wheels/bmw_x5_rear.xml" not in names
+
               for name in sorted(n for n in names if n.lower().endswith(".xml")):
                   content = z.read(name).decode("utf-8", "replace")
-                  for attr in forbidden:
-                      assert not re.search(r"\b" + re.escape(attr) + r"\s*=", content), (
-                          "Forbidden SnowRunner attribute %s remains in %s" % (attr, name)
+                  for word in forbidden:
+                      assert not re.search(r"\\b" + re.escape(word) + r"\\b", content), (
+                          "Forbidden legacy/SnowRunner XML word %s remains in %s" % (word, name)
                       )
+
+              wheel_mesh_names = [
+                  "meshes/wheels/bmw_x5_end_a_side_a.x",
+                  "meshes/wheels/bmw_x5_end_a_side_b.x",
+                  "meshes/wheels/bmw_x5_end_b_side_a.x",
+                  "meshes/wheels/bmw_x5_end_b_side_b.x",
+              ]
+              for mesh_path, wheel_name in zip(wheel_mesh_names, wheel_class_names):
+                  assert mesh_path in names, "Missing wheel mesh " + mesh_path
+                  mesh_text = z.read(mesh_path).decode("latin-1", "replace")
+                  pivot_name = "wheel_pivot_" + wheel_name.replace("bmw_x5_", "")
+                  assert "Frame " + pivot_name in mesh_text, (
+                      "Wheel .X missing zero-origin pivot frame: " + mesh_path
+                  )
 
               material_xmls = [
                   "meshes/trucks/bmw_x5.xml",
@@ -310,6 +346,14 @@ jobs:
               assert has_red_orange, "No red/orange GLB lamp color found in body diffuse maps"
               print("ZIP_FINAL_VALIDATION_OK wheels=4 alpha_textures=%d wheel_rgb=black_rubber+silver_alloy red_lamp=present" % len(alpha_maps))
           PY
+
+          mkdir -p build/zip_verify
+          unzip -q BMW_X5_MudRunner_Wheel_Split.zip -d build/zip_verify
+          if grep -RniE '\\b(HardpointX|HardpointDefaultY|HardpointDefaultZ|SuspensionMin|SuspensionStrength|SoftForceScale|SubstanceFriction|RadiusOffset|BodyFriction|AttenEnd|Color)\\b' build/zip_verify --include='*.xml'; then
+            echo "Forbidden legacy/SnowRunner XML word found inside final ZIP" >&2
+            exit 1
+          fi
+          echo "FINAL_ZIP_GREP_CLEAN: no forbidden legacy/SnowRunner XML words"
 
       - uses: actions/upload-artifact@v4
         with:
