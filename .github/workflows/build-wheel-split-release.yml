@@ -73,7 +73,6 @@ jobs:
           BLENDER=/tmp/blender-2.78c-linux-glibc219-x86_64/blender
           ADDON=/tmp/io_scene_mudrunner
           mkdir -p build/export/wheels
-          mkdir -p build/export/wheels
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/bmw_x5_body.obj --addon-dir "$ADDON" --out build/export/bmw_x5.x
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_a.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_a.x --pivot-name wheel_pivot_end_a_side_a 2>&1 | tee build/export/wheels/wheel_a_side_a.log
           $BLENDER --background --python tools/export_mudrunner_asset_x.py -- --obj build/split/wheel_a_side_b.obj --addon-dir "$ADDON" --out build/export/wheels/wheel_a_side_b.x --pivot-name wheel_pivot_end_a_side_b 2>&1 | tee build/export/wheels/wheel_a_side_b.log
@@ -284,7 +283,7 @@ jobs:
                   matrix_open = mesh_text.find("{", matrix_start)
                   matrix_close = mesh_text.find("}", matrix_open)
                   matrix_values = [float(v) for v in re.findall(
-                      r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?",
+                  number = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?"
                       mesh_text[matrix_open + 1:matrix_close]
                   )]
                   assert len(matrix_values) >= 16, "Missing root pivot matrix in " + mesh_path
@@ -295,7 +294,7 @@ jobs:
                   # Parse the actual DirectX Mesh vertex lists and ensure their
                   # combined local-space bounds are centered on the zero pivot.
                   mesh_vertices = []
-                      r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?",
+                  number = r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?"
                   mesh_pattern = re.compile(r"\bMesh\s*\{")
                   for mesh_match in mesh_pattern.finditer(mesh_text):
                       brace = mesh_text.find("{", mesh_match.start())
