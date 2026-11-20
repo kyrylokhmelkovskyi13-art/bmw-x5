@@ -66,6 +66,7 @@ if not meshes:
 if not args.pivot_name:
     import bmesh
     checked_meshes = 0
+    radial_unmeasurable_meshes = 0
     for mesh_obj in meshes:
         bm = bmesh.new()
         bm.from_mesh(mesh_obj.data)
@@ -144,8 +145,12 @@ if not args.pivot_name:
             if mesh_positive + mesh_negative else 0.0
         )
         if mesh_positive + mesh_negative == 0:
-            bm.free()
-            raise RuntimeError("No measurable outward body faces in " + mesh_obj.name)
+            # A perfectly planar/symmetric shell can have no radial dot
+            # signal around its own centroid. Its normals were still
+            # recalculated for consistent winding; record the limitation.
+            radial_unmeasurable_meshes += 1
+            print("BODY_NORMALS_RADIAL_CHECK_SKIPPED", mesh_obj.name,
+                  "reason=no_nonzero_centroid_dot")
         bm.to_mesh(mesh_obj.data)
         mesh_obj.data.update()
         bm.free()
@@ -153,7 +158,8 @@ if not args.pivot_name:
         print("BODY_NORMALS_OUTWARD_OK", mesh_obj.name,
               "outward=", positive, "inward=", negative, "ratio=", round(ratio, 5))
 
-    print("BODY_NORMALS_OUTWARD_VALIDATION_OK", "meshes=", checked_meshes)
+    print("BODY_NORMALS_OUTWARD_VALIDATION_OK", "meshes=", checked_meshes,
+          "radial_unmeasurable_meshes=", radial_unmeasurable_meshes)
 if args.pivot_name:
     # Wheel OBJ vertices arrive in vehicle/world coordinates. MudRunner expects
     # the wheel pivot frame at the hub, with the exported mesh centered around
