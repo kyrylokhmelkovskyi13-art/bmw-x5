@@ -115,6 +115,45 @@ jobs:
           test -s build/release/classes/wheels/bmw_x5_end_a_side_b.xml
           test -s build/release/classes/wheels/bmw_x5_end_b_side_a.xml
           test -s build/release/classes/wheels/bmw_x5_end_b_side_b.xml
+
+          echo "===== FINAL ZIP INPUT: classes/trucks/bmw_x5.xml ====="
+          cat build/release/classes/trucks/bmw_x5.xml
+          echo "===== FINAL ZIP INPUT: classes/wheels/bmw_x5_end_a_side_a.xml ====="
+          cat build/release/classes/wheels/bmw_x5_end_a_side_a.xml
+
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          forbidden = (
+              "HardpointX", "HardpointDefaultY", "HardpointDefaultZ",
+              "SuspensionMin", "SuspensionStrength", "SoftForceScale",
+              "RadiusOffset", "BodyFriction", "AttenEnd",
+          )
+          root = Path("build/release/classes")
+          for path in root.rglob("*.xml"):
+              content = path.read_text(encoding="utf-8")
+              ET.fromstring(content)
+              for attr in forbidden:
+                  assert not re.search(r"\\b" + re.escape(attr) + r"\\s*=", content), (
+                      "Unsupported attribute %s remains in %s" % (attr, path)
+                  )
+          truck = ET.parse(root / "trucks/bmw_x5.xml").getroot()
+          expected = [
+              ("bmw_x5_end_a_side_a", "(1.694; -0.567; 0.842)", "false"),
+              ("bmw_x5_end_a_side_b", "(1.694; -0.567; -0.842)", "true"),
+              ("bmw_x5_end_b_side_a", "(-1.573; -0.567; 0.842)", "false"),
+              ("bmw_x5_end_b_side_b", "(-1.573; -0.567; -0.842)", "true"),
+          ]
+          actual = [
+              (w.get("Type"), w.get("Pos"), w.get("RightSide"))
+              for w in truck.findall("./Wheels/Wheel")
+          ]
+          assert actual == expected, "Final class XML wheel coordinates mismatch: %r" % (actual,)
+          print("CLASS_XML_INPUT_VALIDATION_OK: 4 wheel positions; all unsupported attributes absent")
+          PY
+
           cp build/export/wheels/wheel_a_side_a.x build/release/meshes/wheels/bmw_x5_end_a_side_a.x
           cp build/export/wheels/wheel_a_side_b.x build/release/meshes/wheels/bmw_x5_end_a_side_b.x
           cp build/export/wheels/wheel_b_side_a.x build/release/meshes/wheels/bmw_x5_end_b_side_a.x
@@ -143,7 +182,7 @@ jobs:
           forbidden = (
               "HardpointX", "HardpointDefaultY", "HardpointDefaultZ",
               "SuspensionMin", "SuspensionStrength", "SoftForceScale",
-              "RadiusOffset", "BodyFriction",
+              "RadiusOffset", "BodyFriction", "AttenEnd",
           )
           with zipfile.ZipFile(archive) as z:
               names = set(z.namelist())
