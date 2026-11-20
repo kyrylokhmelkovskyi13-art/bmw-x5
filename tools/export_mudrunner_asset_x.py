@@ -59,6 +59,63 @@ if not args.pivot_name:
     print("CDT_COLLISION_BOUNDS", (min_x,min_y,min_z), (max_x,max_y,max_z))
 if not meshes:
     raise RuntimeError("OBJ import produced no mesh objects")
+
+# Chassis/body meshes must have outward-facing normals before the legacy
+# MudRunner .X exporter writes its MeshNormals blocks. Wheel meshes are left
+# alone because their source normals/pivots are handled by the wheel pipeline.
+if not args.pivot_name:
+    import bmesh
+    checked_meshes = 0
+    for mesh_obj in meshes:
+        bm = bmesh.new()
+        bm.from_mesh(mesh_obj.data)
+        if not bm.faces:
+            bm.free()
+            raise RuntimeError("Body mesh has no faces: " + mesh_obj.name)
+
+        # First make adjacent face winding consistent. Then choose the
+        # outward orientation by comparing each face normal to the vector
+        # from the mesh vertex centroid to that face's center.
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        mesh_center = sum((v.co for v in bm.verts), Vector()) / float(len(bm.verts))
+
+        def outward_ratio():
+            positive = 0
+            negative = 0
+            for face in bm.faces:
+                face_center = sum((v.co for v in face.verts), Vector()) / float(len(face.verts))
+                radial = face_center - mesh_center
+                dot = face.normal.dot(radial)
+                if dot > 1e-8:
+                    positive += 1
+                elif dot < -1e-8:
+                    negative += 1
+            total = positive + negative
+            return (float(positive) / total if total else 0.0), positive, negative
+
+        ratio, positive, negative = outward_ratio()
+        if negative > positive:
+            bmesh.ops.reverse_faces(bm, faces=bm.faces)
+            bm.normal_update()
+            ratio, positive, negative = outward_ratio()
+
+        # This is intentionally checked in the build, not left as a visual
+        # assumption. Near-tangent faces are ignored; inward-facing faces fail.
+        if ratio < 0.80:
+            bm.free()
+            raise RuntimeError(
+                "Body normals are not predominantly outward for %s: "
+                "outward=%d inward=%d ratio=%.4f"
+                % (mesh_obj.name, positive, negative, ratio)
+            )
+        bm.to_mesh(mesh_obj.data)
+        mesh_obj.data.update()
+        bm.free()
+        checked_meshes += 1
+        print("BODY_NORMALS_OUTWARD_OK", mesh_obj.name,
+              "outward=", positive, "inward=", negative, "ratio=", round(ratio, 5))
+
+    print("BODY_NORMALS_OUTWARD_VALIDATION_OK", "meshes=", checked_meshes)
 if args.pivot_name:
     # Wheel OBJ vertices arrive in vehicle/world coordinates. MudRunner expects
     # the wheel pivot frame at the hub, with the exported mesh centered around
