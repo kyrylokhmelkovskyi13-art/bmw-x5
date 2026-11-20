@@ -284,7 +284,7 @@ jobs:
                   matrix_open = mesh_text.find("{", matrix_start)
                   matrix_close = mesh_text.find("}", matrix_open)
                   matrix_values = [float(v) for v in re.findall(
-                      r"[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[Ee][-+]?\\d+)?",
+                      r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?",
                       mesh_text[matrix_open + 1:matrix_close]
                   )]
                   assert len(matrix_values) >= 16, "Missing root pivot matrix in " + mesh_path
@@ -295,8 +295,8 @@ jobs:
                   # Parse the actual DirectX Mesh vertex lists and ensure their
                   # combined local-space bounds are centered on the zero pivot.
                   mesh_vertices = []
-                  number = r"[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[Ee][-+]?\\d+)?"
-                  mesh_pattern = re.compile(r"\\bMesh\\s*\\{")
+                      r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[Ee][-+]?\d+)?",
+                  mesh_pattern = re.compile(r"\bMesh\s*\{")
                   for mesh_match in mesh_pattern.finditer(mesh_text):
                       brace = mesh_text.find("{", mesh_match.start())
                       depth = 0
@@ -311,13 +311,13 @@ jobs:
                                   break
                       assert close is not None, "Unclosed Mesh block in " + mesh_path
                       body = mesh_text[brace + 1:close]
-                      count_match = re.match(r"\\s*(\\d+)\\s*;", body)
+                      count_match = re.match(r"\s*(\d+)\s*;", body)
                       if not count_match:
                           continue
                       vertex_count = int(count_match.group(1))
                       vertex_data = body[count_match.end():]
                       triples = re.findall(
-                          r"(" + number + r")\\s*;\\s*(" + number + r")\\s*;\\s*(" + number + r")\\s*;\\s*,?",
+                          r"(" + number + r")\s*;\s*(" + number + r")\s*;\s*(" + number + r")\s*;\s*,?",
                           vertex_data
                       )[:vertex_count]
                       assert len(triples) == vertex_count, (
