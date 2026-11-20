@@ -107,23 +107,23 @@ def x_material_parts(path):
     """Return (frame_name, part_index, material_name) from each direct mesh frame."""
     source = path.read_text(encoding="utf-8", errors="replace")
     result = []
-    frame_matches = list(re.finditer(r"\\bFrame\\s+([^\\s{]+)\\s*\\{", source))
+    frame_matches = list(re.finditer(r"\bFrame\s+([^\s{]+)\s*\{", source))
     for frame_match in frame_matches:
         opening = frame_match.end() - 1
         closing = matching_brace(source, opening)
         frame_body = source[opening + 1:closing]
-        nested = re.search(r"\\bFrame\\s+[^\\s{]+\\s*\\{", frame_body)
+        nested = re.search(r"\bFrame\s+[^\s{]+\s*\{", frame_body)
         direct_body = frame_body[:nested.start()] if nested else frame_body
-        mesh_match = re.search(r"\\bMeshMaterialList\\s*\\{", direct_body)
+        mesh_match = re.search(r"\bMeshMaterialList\s*\{", direct_body)
         if not mesh_match:
             continue
         list_open = direct_body.find("{", mesh_match.start())
         list_close = matching_brace(direct_body, list_open)
         material_block = direct_body[list_open + 1:list_close]
-        names = re.findall(r"\\bMaterial\\s+([^\\s{]+)\\s*\\{", material_block)
+        names = re.findall(r"\bMaterial\s+([^\s{]+)\s*\{", material_block)
         if not names:
             continue
-        declared_count = re.match(r"\\s*(\\d+)\\s*;", material_block)
+        declared_count = re.match(r"\s*(\d+)\s*;", material_block)
         if declared_count and int(declared_count.group(1)) != len(names):
             raise RuntimeError(
                 "%s: MeshMaterialList in frame %s declares %s materials but contains %s"
@@ -243,11 +243,11 @@ def make_xml(x_path, xml_path, doc, binary, by_name):
         rows.append("  <Material " + " ".join(attrs) + " />")
 
     rows.append("</CombineXMesh>")
-    xml_text = strip_snowrunner_attributes("\\n".join(rows) + "\\n")
+    xml_text = strip_snowrunner_attributes("\n".join(rows) + "\n")
     xml_path.parent.mkdir(parents=True, exist_ok=True)
     xml_path.write_text(xml_text, encoding="utf-8")
 
-    meshparts = re.findall(r'<Material\\s+MeshParts="([^"]+)"', xml_text)
+    meshparts = re.findall(r'<Material\s+MeshParts="([^"]+)"', xml_text)
     if len(meshparts) != len(grouped):
         raise RuntimeError("Material MeshParts assignments missing or duplicated in " + str(xml_path))
     covered = [part.strip() for value in meshparts for part in value.split(",")]
@@ -255,7 +255,7 @@ def make_xml(x_path, xml_path, doc, binary, by_name):
     if Counter(covered) != Counter(expected):
         raise RuntimeError("MeshParts coverage mismatch in " + str(xml_path))
     for attr in SNOWRUNNER_ATTRIBUTES:
-        if re.search(r"\\b" + re.escape(attr) + r"\\s*=", xml_text):
+        if re.search(r"\b" + re.escape(attr) + r"\s*=", xml_text):
             raise RuntimeError("SnowRunner-only attribute survived XML generation: " + attr)
     for rel in re.findall(r'(?:DiffuseMap|SpecularMap)="([^"]+)"', xml_text):
         if Path(rel).name != rel or not (TEXTURES / rel).is_file():
