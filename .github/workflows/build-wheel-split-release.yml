@@ -309,7 +309,7 @@ jobs:
                                   close = pos
                                   break
                       assert close is not None, "Unclosed Mesh block in " + mesh_path
-                      body = mesh_text[brace + 1:close]
+                      body = re.sub(r"(?m)//.*$", "", mesh_text[brace + 1:close])
                       count_match = re.match(r"\s*(\d+)\s*;", body)
                       if not count_match:
                           continue
