@@ -206,7 +206,34 @@ jobs:
                       alpha = image.getchannel("A")
                       lo, hi = alpha.getextrema()
                       assert 90 <= lo <= hi <= 110, "%s alpha range %s is outside 90-110" % (texture, (lo, hi))
-              print("ZIP_FINAL_VALIDATION_OK wheels=4 alpha_textures=%d" % len(alpha_maps))
+
+              # Wheel maps must retain GLB rubber-black and alloy-silver base colors,
+              # rather than the gray 128/128/128 fallback.
+              for wheel_xml in material_xmls[1:]:
+                  wheel_root = ET.fromstring(z.read(wheel_xml))
+                  means = []
+                  for material in wheel_root.findall("Material"):
+                      tex = "textures/" + PurePosixPath(material.attrib["DiffuseMap"]).name
+                      with Image.open(__import__("io").BytesIO(z.read(tex))) as image:
+                          rgb = image.convert("RGB")
+                          means.append(sum(rgb.resize((1, 1)).getpixel((0, 0))) / 3.0)
+                  assert len(means) == 2 and min(means) < 80 and max(means) > 100, (
+                      "Wheel diffuse maps do not contain both dark rubber and silver alloy: %s %r"
+                      % (wheel_xml, means)
+                  )
+
+              # The GLB's red/orange lamp material must survive in the body diffuse maps.
+              has_red_orange = False
+              body_root = ET.fromstring(z.read(material_xmls[0]))
+              for material in body_root.findall("Material"):
+                  tex = "textures/" + PurePosixPath(material.attrib["DiffuseMap"]).name
+                  with Image.open(__import__("io").BytesIO(z.read(tex))) as image:
+                      r, g, b = image.convert("RGB").resize((1, 1)).getpixel((0, 0))
+                      if r > 1.5 * max(g, b):
+                          has_red_orange = True
+                          break
+              assert has_red_orange, "No red/orange GLB lamp color found in body diffuse maps"
+              print("ZIP_FINAL_VALIDATION_OK wheels=4 alpha_textures=%d wheel_rgb=black_rubber+silver_alloy red_lamp=present" % len(alpha_maps))
           PY
 
       - uses: actions/upload-artifact@v4
