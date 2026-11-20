@@ -31,9 +31,19 @@ meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
 # The chassis export needs a MudRunner collision frame named "cdt". The exporter
 # interprets Y as vertical; dimensions are length, height, width in meters.
 if not args.pivot_name:
-    hx, hy, hz = 2.3, 0.75, 0.925
-    verts = [(-hx,-hy,-hz), (hx,-hy,-hz), (hx,hy,-hz), (-hx,hy,-hz),
-             (-hx,-hy,hz), (hx,-hy,hz), (hx,hy,hz), (-hx,hy,hz)]
+    # Build collision from the complete imported chassis geometry bounds.
+    body_points = [o.matrix_world @ Vector(corner) for o in meshes for corner in o.bound_box]
+    if not body_points:
+        raise RuntimeError("Cannot build CDT: chassis has no bounding-box points")
+    margin = 0.02
+    min_x = min(v.x for v in body_points) - margin
+    max_x = max(v.x for v in body_points) + margin
+    min_y = min(v.y for v in body_points) - margin
+    max_y = max(v.y for v in body_points) + margin
+    min_z = min(v.z for v in body_points) - margin
+    max_z = max(v.z for v in body_points) + margin
+    verts = [(min_x,min_y,min_z), (max_x,min_y,min_z), (max_x,max_y,min_z), (min_x,max_y,min_z),
+             (min_x,min_y,max_z), (max_x,min_y,max_z), (max_x,max_y,max_z), (min_x,max_y,max_z)]
     faces = [(0,1,2,3), (4,7,6,5), (0,4,5,1), (1,5,6,2),
              (2,6,7,3), (3,7,4,0)]
     cdt_mesh = bpy.data.meshes.new("cdt")
@@ -42,7 +52,7 @@ if not args.pivot_name:
     cdt_obj = bpy.data.objects.new("cdt", cdt_mesh)
     bpy.context.scene.objects.link(cdt_obj)
     meshes.append(cdt_obj)
-    print("CDT_COLLISION_BOX_CREATED", "4.6x1.5x1.85")
+    print("CDT_COLLISION_BOUNDS", (min_x,min_y,min_z), (max_x,max_y,max_z))
 if not meshes:
     raise RuntimeError("OBJ import produced no mesh objects")
 if args.pivot_name:

@@ -198,6 +198,15 @@ def main():
     # partitions have been joined to their corresponding tire meshes.
     bpy.data.objects.remove(rim, do_unlink=True)
 
+    # Scale each assembled wheel to 82% around its measured hub center.
+    for wheel_key, wheel in zip(WHEEL_MAP.keys(), wheel_objects):
+        center = tire_centers[wheel_key]
+        inv = wheel.matrix_world.inverted()
+        for vertex in wheel.data.vertices:
+            world_co = wheel.matrix_world @ vertex.co
+            vertex.co = inv @ (center + (world_co - center) * 0.82)
+        wheel.data.update()
+
     wheel_source_names = {RIM_NAME} | {value[0] for value in WHEEL_MAP.values()}
     body_objects = [
         obj for obj in bpy.context.scene.objects
